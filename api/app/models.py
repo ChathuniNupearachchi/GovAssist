@@ -6,6 +6,10 @@ table without its own `id`, is the likely miscount) — confirmed with the
 user to build all 14 listed. See the phase-2-data-model change's
 proposal.md for the full correction note.
 
+Phase 4 added a 15th table, RESOLUTION_NOTE, plus per-fact
+source_document_id columns on Requirement and FeeRule — see the
+phase-4-rules-engine change's design.md.
+
 Enum-like columns are plain String with a Postgres CHECK constraint
 (added in the migration) rather than a native Postgres ENUM type, so
 adding a new allowed value later is one ALTER TABLE instead of an
@@ -129,6 +133,17 @@ class Requirement(Base):
     office_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("office.id"), nullable=True
     )
+    # Per-fact citation, independent of rule_version.source_document_id.
+    # Added in Phase 4: a rule version's facts can span more than one
+    # source document (e.g. renewal's documents/fees come from id=8, its
+    # fingerprints prerequisite from id=7), so each requirement carries
+    # its own citation rather than inheriting one. Falls back to the
+    # rule version's citation when null (see case-resolution-data-model
+    # spec's "Requirements, conditions, and fees resolve per rule
+    # version" requirement).
+    source_document_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("source_document.id"), nullable=True
+    )
     label: Mapped[str] = mapped_column(String, nullable=False)
     kind: Mapped[str] = mapped_column(String, nullable=False)
     freshness_rule: Mapped[str | None] = mapped_column(String, nullable=True)
@@ -136,6 +151,7 @@ class Requirement(Base):
 
     rule_version: Mapped["RuleVersion"] = relationship()
     office: Mapped["Office | None"] = relationship()
+    source_document: Mapped["SourceDocument | None"] = relationship()
 
 
 class Question(Base):
@@ -205,12 +221,18 @@ class FeeRule(Base):
     condition_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("condition.id"), nullable=True
     )
+    # Per-fact citation, independent of rule_version.source_document_id —
+    # same rationale as Requirement.source_document_id (Phase 4).
+    source_document_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("source_document.id"), nullable=True
+    )
     base_amount: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False)
     penalty_amount: Mapped[float | None] = mapped_column(Numeric(10, 2), nullable=True)
     basis: Mapped[str] = mapped_column(String, nullable=False, default="normal")
 
     rule_version: Mapped["RuleVersion"] = relationship()
     condition: Mapped["Condition | None"] = relationship()
+    source_document: Mapped["SourceDocument | None"] = relationship()
 
 
 class Case(Base):
@@ -287,3 +309,35 @@ class AdminUser(Base):
     id: Mapped[uuid.UUID] = _uuid_pk()
     email: Mapped[str] = mapped_column(String, nullable=False, unique=True)
     role: Mapped[str] = mapped_column(String, nullable=False)
+
+
+class ResolutionNote(Base):
+    """An advisory note attached to case resolution — not a document, step,
+    or prerequisite a citizen collects, but a fact that changes what the
+    citizen should do before acting on a resolution (Phase 4: the
+    urgent-service office conflict). Citizen-facing, so it lives in data
+    per CLAUDE.md's "rules live in data, not code" rather than as a
+    resolver-code constant — see phase-4-rules-engine's design.md.
+    """
+
+    __tablename__ = "resolution_note"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    code: Mapped[str] = mapped_column(String, nullable=False, unique=True)
+    note_text: Mapped[str] = mapped_column(Text, nullable=False)
+    primary_source_document_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("source_document.id"), nullable=False
+    )
+    secondary_source_document_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("source_document.id"), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, default=datetime.utcnow
+    )
+
+    primary_source_document: Mapped["SourceDocument"] = relationship(
+        foreign_keys=[primary_source_document_id]
+    )
+    secondary_source_document: Mapped["SourceDocument | None"] = relationship(
+        foreign_keys=[secondary_source_document_id]
+    )
