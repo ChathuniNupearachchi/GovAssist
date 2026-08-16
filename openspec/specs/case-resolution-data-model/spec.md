@@ -15,8 +15,9 @@ and writes one agreed schema instead of each inventing its own.
 The system SHALL persist a catalogue of services (each with a code, name,
 and category) and, independently, a record of every scraped source
 document (its URL, a local snapshot path, a content hash, its document
-type, when it was fetched, and its review status), so rule versions can
-later cite which document justified them.
+type, when it was fetched, its review status, and — once approved — the
+date it was approved), so rule versions and RAG answers can later cite
+which document justified them and as of when.
 
 #### Scenario: A service is persisted
 - **WHEN** a service is created
@@ -26,6 +27,11 @@ later cite which document justified them.
 - **WHEN** a source document is created
 - **THEN** it has a non-null `source_url`, `content_hash`, `document_type`,
   and `fetched_at`, and a `status`
+
+#### Scenario: An approved source document records when it was approved
+- **WHEN** a source document's `status` is set to `approved`
+- **THEN** its `approved_at` is non-null, recording when that approval
+  happened
 
 ### Requirement: Rule versions trace a service to its approving source
 Every rule version SHALL belong to exactly one service, reference the
@@ -47,8 +53,15 @@ document and reviewer that made it valid.
 Every requirement, condition, and fee rule SHALL belong to exactly one
 rule version. A requirement SHALL carry a label, a kind (`document`,
 `step`, or `prerequisite`), an optional office it routes to, a freshness
-rule, and a sequence position. A fee rule SHALL carry a base amount, an
-optional penalty amount, and a basis (`normal` or `urgent`).
+rule, a sequence position, and an optional `source_document_id` citing
+the specific source document that fact came from. A fee rule SHALL carry
+a base amount, an optional penalty amount, a basis (`normal` or
+`urgent`), and an optional `source_document_id` citing the specific
+source document that fee came from. A requirement's or fee rule's own
+`source_document_id`, when present, is the citation shown to the
+citizen; `RULE_VERSION.source_document_id` remains the version's primary
+citation and is used only as a fallback when a requirement or fee rule
+does not carry its own.
 
 #### Scenario: A requirement is persisted
 - **WHEN** a requirement is created
@@ -59,10 +72,22 @@ optional penalty amount, and a basis (`normal` or `urgent`).
 - **WHEN** a requirement's kind is set
 - **THEN** the value is one of `document`, `step`, or `prerequisite`
 
+#### Scenario: A requirement carries its own citation
+- **WHEN** a requirement's facts come from a different document than its
+  rule version's primary source
+- **THEN** the requirement's own `source_document_id` references that
+  document, independent of `RULE_VERSION.source_document_id`
+
 #### Scenario: A fee rule is persisted
 - **WHEN** a fee rule is created
 - **THEN** it references exactly one rule version, and has a non-null
   `base_amount` and `basis`
+
+#### Scenario: A fee rule carries its own citation
+- **WHEN** a fee rule's amount comes from a different document than its
+  rule version's primary source
+- **THEN** the fee rule's own `source_document_id` references that
+  document, independent of `RULE_VERSION.source_document_id`
 
 ### Requirement: A requirement gates on a flat set of independent conditions
 Every condition SHALL reference the intake question it evaluates, an
@@ -150,6 +175,25 @@ versus who may publish.
 - **WHEN** an admin user's role is set
 - **THEN** the value is one of `reviewer` or `approver`
 
+### Requirement: Resolution notes attach advisory citations to a resolved case
+The system SHALL persist advisory notes that are not a document, step, or
+prerequisite a citizen collects, but change what the citizen should do
+before acting on a resolution (for example, confirming an office accepts
+a service before traveling there). Every resolution note SHALL carry its
+note text and reference at least one source document; it MAY reference a
+second source document when the advisory arises from two documents
+disagreeing.
+
+#### Scenario: A resolution note is persisted
+- **WHEN** a resolution note is created
+- **THEN** it has non-null `note_text` and references at least one
+  source document
+
+#### Scenario: A resolution note can cite two conflicting sources
+- **WHEN** a resolution note documents a conflict between two published
+  sources
+- **THEN** it references both source documents, not just one
+
 ### Requirement: The schema migration is reversible
 The migration that creates this schema SHALL be reversible: rolling it
 back SHALL remove exactly what it added, leaving no orphaned tables,
@@ -157,4 +201,4 @@ columns, or extensions.
 
 #### Scenario: The migration rolls back cleanly
 - **WHEN** the migration that creates this schema is rolled back one step
-- **THEN** none of its 14 tables remain
+- **THEN** none of its 15 tables remain

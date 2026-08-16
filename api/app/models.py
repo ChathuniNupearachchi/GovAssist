@@ -73,6 +73,11 @@ class SourceDocument(Base):
         DateTime, nullable=False, default=datetime.utcnow
     )
     status: Mapped[str] = mapped_column(String, nullable=False, default="pending")
+    # When status was set to "approved" — distinct from RuleVersion.verified_at
+    # (a human verifying rule *content*) and from fetched_at (scrape time).
+    # This is the "verified as of" date RAG answers cite. See phase-5-rag-layer's
+    # design.md.
+    approved_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
 
 class RuleVersion(Base):

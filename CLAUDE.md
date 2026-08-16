@@ -87,11 +87,15 @@ English only for this build.
 
 ## How the Claude API is used
 
-Three jobs, all narrow:
+Four jobs, all narrow:
 
 1. Parsing scraped text into structured draft rules (never live)
 2. Matching a free-text situation to a service
 3. Generating grounded answers from retrieved RAG chunks
+4. Extracting text from scanned PDFs when there is no text layer for
+   pdfplumber to read — OCR-by-LLM, not a citizen-facing job. Scanned
+   PDFs are common in Sri Lankan government sources generally, not just
+   Immigration, so this recurs across departments.
 
 Citizens never receive ungrounded LLM output. Every generated answer
 cites the source chunks it was built from. If retrieval returns nothing

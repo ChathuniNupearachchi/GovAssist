@@ -169,6 +169,19 @@ expected outputs:
 
 ## Phase 5 — RAG layer
 
+**Prerequisite — strip navigation/footer boilerplate before chunking.**
+Every page on immigration.gov.lk carries an identical ~280-word nav block
+(and a repeated footer) that Phase 3's chunker currently ingests verbatim.
+On a page as short as `pages_e.php?id=10`, that boilerplate fills most of
+chunk 1, pushing the actual amendment fee/timeline content later in the
+chunk and diluting its embedding — demonstrated directly: a similarity
+query for "change my name on my passport after marriage" ranked that
+chunk #6 of 25, behind several less-relevant ones. Fix this — strip nav
+and footer text (e.g. by removing known block selectors, or reusing the
+site's identical boilerplate as a diffable prefix/suffix to trim) before
+chunking, and re-chunk/re-embed existing documents — before retrieval
+quality depends on it.
+
 **5.1 Retrieval** — embed the query, search pgvector, scoped to
 approved versions only.
 
@@ -194,6 +207,42 @@ GET  /health                   liveness
 Intent classification lives here — situation versus open question.
 
 *Done when:* a full case resolves end to end through the API.
+
+---
+
+## Phase 6.5 — Hybrid search (vector + full-text)
+
+**Rationale.** Phase 5's threshold calibration showed no single cosine-
+similarity cutoff separates in-corpus from out-of-corpus queries: "What
+are the working hours at the Head Office?" (genuinely covered by
+`pages_e.php?id=7`) scored 0.8311 — worse than "How do I renew my
+driving license?" (0.7358), a topic the corpus doesn't cover at all.
+Exact terms are exactly what vector search handles worst and keyword
+search handles best — "Form K-35A", "section 19(2)", specific fee
+amounts. Fix retrieval quality here, in backend context, before Phase 7
+connects the mobile app and retrieval quality becomes something a user
+sees rather than something in a test log.
+
+**6.5.1 Full-text index** — add a `tsvector` column (or expression
+index) on `DOCUMENT_CHUNK.chunk_text`, `GIN`-indexed. No new dependency
+— Postgres full-text search is built in.
+
+**6.5.2 Hybrid ranking** — combine cosine similarity and full-text rank
+(e.g. reciprocal rank fusion, or a weighted blend) into one score.
+Retrieval scoping (approved documents only) and the self-check/
+reformulation flow from Phase 5 stay in place; only the ranking function
+underneath them changes.
+
+**6.5.3 Recalibrate** — re-run the Phase 5 threshold calibration queries
+against hybrid scores, including the two that motivated this phase:
+"working hours at the Head Office" should now rank above "driving
+license". Record the new measured values the same way Phase 5 did —
+don't assert improvement without checking.
+
+*Done when:* "What are the working hours at the Head Office?" retrieves
+`pages_e.php?id=7`, and "How do I renew my driving license?" returns no
+relevant match — both correct, where cosine similarity alone had them
+backwards.
 
 ---
 
