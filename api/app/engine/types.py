@@ -26,6 +26,12 @@ class ResolvedRequirement:
     kind: str  # document | step | prerequisite
     sequence: int
     citation: Citation
+    # Downloadable resources (e.g. a form PDF and its filling
+    # instructions) — a list of {"label", "url", "type"} dicts, or None
+    # for a requirement with none. Structured so a client can render
+    # tappable download links rather than a URL buried in prose — see
+    # case-resolution-data-model's "requirement resources" requirement.
+    resources: list[dict] | None = None
 
 
 @dataclass(frozen=True)
@@ -80,3 +86,30 @@ class CaseResolution:
     offices: OfficeResolution | None = None
     amendment_alternative: AmendmentAlternative | None = None
     scope_gate: ScopeGateResponse | None = None
+
+
+class IncompleteCaseError(Exception):
+    """Raised by `resolve_case` when a relevant renewal question has not
+    yet been answered.
+
+    A gating condition treats a missing answer as "not satisfied"
+    regardless of negation (`app.engine.conditions.condition_link_passes`),
+    which means a requirement set built from partial answers is not
+    "everything not yet known to apply" — it silently omits branches that
+    depend on the missing fact in either direction. An unanswered
+    `dual_citizen`, for example, suppresses both the standard document
+    set (gated on `dual_citizen != true`) and the dual-citizen set
+    (gated on `dual_citizen == true`) at once. A resolver that returned
+    that partial set as if it were the plan would be indistinguishable
+    from a citizen's actual, complete checklist — an empty-looking gap
+    is more dangerous than an explicit refusal, because it reads as
+    "done" rather than "incomplete". `resolve_case` refuses instead: it
+    raises this exception rather than returning a plausible-looking but
+    silently partial `CaseResolution`.
+    """
+
+    def __init__(self, pending_prompt: str):
+        self.pending_prompt = pending_prompt
+        super().__init__(
+            f"Case is not ready to resolve — still pending: {pending_prompt}"
+        )

@@ -27,14 +27,16 @@ from sqlalchemy import (
     ARRAY,
     Boolean,
     CheckConstraint,
+    Computed,
     DateTime,
     ForeignKey,
+    Index,
     Integer,
     Numeric,
     String,
     Text,
 )
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import JSONB, TSVECTOR, UUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
@@ -153,6 +155,13 @@ class Requirement(Base):
     kind: Mapped[str] = mapped_column(String, nullable=False)
     freshness_rule: Mapped[str | None] = mapped_column(String, nullable=True)
     sequence: Mapped[int] = mapped_column(Integer, nullable=False)
+    # Downloadable resources for this requirement (e.g. an application
+    # form's PDF and its filling instructions) — a list of
+    # {"label": str, "url": str, "type": str} objects, or null when a
+    # requirement has none. Reused by every future service's own forms,
+    # not special-cased to passports — see case-resolution-data-model
+    # spec's "requirement resources" requirement.
+    resources: Mapped[list[dict] | None] = mapped_column(JSONB, nullable=True)
 
     rule_version: Mapped["RuleVersion"] = relationship()
     office: Mapped["Office | None"] = relationship()
@@ -174,6 +183,12 @@ class Question(Base):
     prompt: Mapped[str] = mapped_column(Text, nullable=False)
     answer_type: Mapped[str] = mapped_column(String, nullable=False)
     sequence: Mapped[int] = mapped_column(Integer, nullable=False)
+    # Optional legal/technical reference for a citizen who already knows
+    # the terminology (e.g. "Section 19(2) of the Citizenship Act,
+    # amended by Act No. 18 of 1948") — shown alongside a plain-language
+    # `prompt`, never required to answer it. See conversational-intake's
+    # "plain language" audit.
+    hint: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     service: Mapped["Service"] = relationship()
 
@@ -210,6 +225,30 @@ class RequirementCondition(Base):
     negated: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
     requirement: Mapped["Requirement"] = relationship()
+    condition: Mapped["Condition"] = relationship()
+
+
+class QuestionCondition(Base):
+    """Gates whether a QUESTION is currently relevant — the same flat,
+    zero-or-more-conditions-ANDed, each-optionally-negated shape
+    REQUIREMENT_CONDITION already uses for requirements, applied to
+    intake questions instead. A question with no linked conditions is
+    unconditionally relevant (the common case). Reuses `Condition` and
+    `app.engine.conditions.condition_link_passes` unchanged — this is
+    the same gating mechanism, a different left-hand side.
+    """
+
+    __tablename__ = "question_condition"
+
+    question_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("question.id"), primary_key=True
+    )
+    condition_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("condition.id"), primary_key=True
+    )
+    negated: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+
+    question: Mapped["Question"] = relationship()
     condition: Mapped["Condition"] = relationship()
 
 
@@ -293,6 +332,11 @@ class PlanItem(Base):
 
 class DocumentChunk(Base):
     __tablename__ = "document_chunk"
+    __table_args__ = (
+        Index(
+            "ix_document_chunk_search_vector", "search_vector", postgresql_using="gin"
+        ),
+    )
 
     id: Mapped[uuid.UUID] = _uuid_pk()
     source_document_id: Mapped[uuid.UUID] = mapped_column(
@@ -301,6 +345,27 @@ class DocumentChunk(Base):
     chunk_text: Mapped[str] = mapped_column(Text, nullable=False)
     embedding: Mapped[list[float]] = mapped_column(Vector(384), nullable=False)
     sequence: Mapped[int] = mapped_column(Integer, nullable=False)
+    # Phase 6.6: document_title, section_heading, content_type
+    # (prose|table|list), source_url — see document-chunking spec's
+    # "Every chunk carries metadata" requirement. Python attribute is
+    # `chunk_metadata`, not `metadata` — that name is reserved on every
+    # SQLAlchemy declarative class for the schema-level MetaData
+    # instance (`Base.metadata`); the DB column itself is still named
+    # `metadata`, per the spec.
+    chunk_metadata: Mapped[dict | None] = mapped_column(
+        "metadata", JSONB, nullable=True
+    )
+    # Phase 6.7: Postgres-native full-text search alongside pgvector
+    # cosine similarity — a STORED generated column (computed by
+    # Postgres on every insert/update, not maintained in application
+    # code), GIN-indexed for `plainto_tsquery` matching. See
+    # case-resolution-data-model spec's "chunk's text also supports
+    # full-text search" requirement.
+    search_vector: Mapped[str] = mapped_column(
+        TSVECTOR,
+        Computed("to_tsvector('english', chunk_text)", persisted=True),
+        nullable=True,
+    )
 
     source_document: Mapped["SourceDocument"] = relationship()
 
@@ -314,6 +379,42 @@ class AdminUser(Base):
     id: Mapped[uuid.UUID] = _uuid_pk()
     email: Mapped[str] = mapped_column(String, nullable=False, unique=True)
     role: Mapped[str] = mapped_column(String, nullable=False)
+
+
+class ChatMessage(Base):
+    """Phase 6.10: the durable, per-case conversation record — what a
+    citizen was actually told survives a closed app, even though the
+    engine already remembered every fact through CASE_ANSWER. Also the
+    audit trail: what a citizen actually asked, and what the system
+    actually answered."""
+
+    __tablename__ = "chat_message"
+    __table_args__ = (
+        CheckConstraint("role IN ('user', 'assistant')", name="ck_chat_message_role"),
+    )
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    case_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("case.id"), nullable=False
+    )
+    role: Mapped[str] = mapped_column(String, nullable=False)
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, default=datetime.utcnow
+    )
+    # "answer" | "situation" | "question" | null (deterministic match, or
+    # not classified — e.g. the assistant's own messages).
+    intent: Mapped[str | None] = mapped_column(String, nullable=True)
+    # Chunk ids the assistant's answer actually cited (6.9's verified
+    # set) — null for a user message, which cites nothing.
+    cited_chunk_ids: Mapped[list[str] | None] = mapped_column(JSONB, nullable=True)
+    # Phase 6.11: the per-turn tool-call trace (name, arguments, order,
+    # result for every tool call made while producing this message) —
+    # null for a user message or an assistant message answered without
+    # calling any tool. Same shape/precedent as `cited_chunk_ids`.
+    tool_trace: Mapped[list[dict] | None] = mapped_column(JSONB, nullable=True)
+
+    case: Mapped["Case"] = relationship()
 
 
 class ResolutionNote(Base):

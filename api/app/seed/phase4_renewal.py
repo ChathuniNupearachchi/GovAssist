@@ -27,6 +27,7 @@ from app.models import (
     FeeRule,
     Office,
     Question,
+    QuestionCondition,
     Requirement,
     RequirementCondition,
     ResolutionNote,
@@ -34,6 +35,23 @@ from app.models import (
     Service,
     SourceDocument,
 )
+
+# Common secular occupations, used to skip the buddhist_priest question
+# once a citizen has already stated one — see the QUESTION_CONDITION
+# linked to the buddhist_priest Question below. An exact-match `in`
+# condition against free text is a heuristic, not true understanding:
+# it only fires when the citizen's stated profession happens to match
+# this list's casing/wording exactly (the classifier records whatever
+# casing the citizen's own words implied — see design.md's note on this
+# limitation). Unmatched or unanswered professions still fall through to
+# asking buddhist_priest, which is the safe direction to fail in.
+SECULAR_PROFESSIONS = [
+    "Doctor", "Teacher", "Engineer", "Nurse", "Accountant", "Lawyer",
+    "Businessman", "Business", "Driver", "Farmer", "Student", "Clerk",
+    "Officer", "Manager", "Government Officer", "Private Sector Employee",
+    "Housewife", "Retired", "Unemployed", "Police Officer", "Soldier",
+    "Banker", "Shop Owner", "Architect", "Pharmacist", "Dentist",
+]
 
 RENEWAL_CODE = "passport-renewal"
 AMENDMENT_CODE = "passport-amendment"
@@ -103,12 +121,18 @@ def _wipe_existing(db: Session) -> None:
             select(Question).where(Question.service_id == service.id)
         ).all()
         for q in questions:
+            db.query(QuestionCondition).filter(
+                QuestionCondition.question_id == q.id
+            ).delete()
             conditions = db.scalars(
                 select(Condition).where(Condition.question_id == q.id)
             ).all()
             for c in conditions:
                 db.query(RequirementCondition).filter(
                     RequirementCondition.condition_id == c.id
+                ).delete()
+                db.query(QuestionCondition).filter(
+                    QuestionCondition.condition_id == c.id
                 ).delete()
                 db.delete(c)
             db.delete(q)
@@ -135,6 +159,8 @@ def seed(db: Session) -> None:
     doc_id8 = _source_document(db, "pages_e.php?id=8")
     doc_id7 = _source_document(db, "pages_e.php?id=7")
     doc_id10 = _source_document(db, "pages_e.php?id=10")
+    doc_form_pdf = _source_document(db, "applications/passport_application.pdf")
+    doc_instructions_pdf = _source_document(db, "applications/instructions_english_td.pdf")
 
     # -- Offices -----------------------------------------------------
     # Head Office + 5 Regional Offices already exist from Phase 2's seed.
@@ -189,12 +215,13 @@ def seed(db: Session) -> None:
     # and next-question logic can't drift apart on the question<->attribute
     # mapping (Question itself carries no attribute column).
     questions = {}
-    for attribute, prompt, answer_type, sequence in RENEWAL_QUESTIONS:
+    for attribute, prompt, answer_type, sequence, hint in RENEWAL_QUESTIONS:
         q = Question(
             service_id=renewal_service.id,
             prompt=prompt,
             answer_type=answer_type,
             sequence=sequence,
+            hint=hint,
         )
         db.add(q)
         db.flush()
@@ -227,6 +254,24 @@ def seed(db: Session) -> None:
     # operator — see design.md's Condition.attribute decision.
     cond_profession_empty = make_condition("profession", "equals", "")
     cond_buddhist_priest = make_condition("buddhist_priest", "equals", "true")
+    cond_profession_secular = make_condition(
+        "profession", "in", ",".join(SECULAR_PROFESSIONS)
+    )
+
+    # -- Question relevance (data-driven, not a code special-case) --------
+    # buddhist_priest is skipped once profession clearly names a secular
+    # occupation — asking someone who just said "I'm a doctor" whether
+    # they're a Buddhist priest reads as not listening. This is the same
+    # flat, all-linked-conditions-pass, optionally-negated shape
+    # REQUIREMENT_CONDITION already uses, applied to a QUESTION instead —
+    # see QuestionCondition's docstring in models.py.
+    db.add(
+        QuestionCondition(
+            question_id=questions["buddhist_priest"].id,
+            condition_id=cond_profession_secular.id,
+            negated=True,  # relevant unless profession is IN the secular list
+        )
+    )
 
     assert EXPECTED_ATTRIBUTES.issubset(
         {c.attribute for c in [
@@ -247,6 +292,49 @@ def seed(db: Session) -> None:
     db.add(studio_ack)
     db.flush()
 
+    # Application form K-35A — unconditional, every renewal needs it,
+    # sequenced before the document items (10+): the form must be
+    # obtained and filled before the supporting documents are assembled
+    # around it. Source: pages_e.php?id=8, "Where can I obtain an
+    # Application Form?" for the pickup locations; the two PDF URLs are
+    # the exact ones the scraper fetched (SOURCE_DOCUMENT.source_url),
+    # not hand-typed, so they're already verified as live. Divisional
+    # Secretariats are named here only as a form-pickup location — never
+    # as a submission location; `app.engine.offices.resolve_offices`
+    # never selects a `type=ds` office, so the plan's offices list can't
+    # imply otherwise either.
+    application_form = Requirement(
+        rule_version_id=renewal_rv.id,
+        source_document_id=doc_id8.id,
+        label="Completed application form K-35A",
+        kind="prerequisite",
+        freshness_rule=(
+            "A hard copy can be obtained from: the Head Office, "
+            "Battaramulla; the Regional Offices at Kandy, Matara, "
+            "Vavuniya, Kurunegala, or Jaffna; your area's Divisional "
+            "Secretariat (pickup only — applications are not accepted "
+            "for submission at a Divisional Secretariat); or an "
+            "Overseas Sri Lankan Mission. The application must be "
+            "filled in English, and the Client Undertaking Section "
+            "must be signed — no application is accepted without it."
+        ),
+        sequence=2,
+        resources=[
+            {
+                "label": "Application form K-35A",
+                "url": doc_form_pdf.source_url,
+                "type": "pdf",
+            },
+            {
+                "label": "Filling instructions",
+                "url": doc_instructions_pdf.source_url,
+                "type": "pdf",
+            },
+        ],
+    )
+    db.add(application_form)
+    db.flush()
+
     fingerprints = Requirement(
         rule_version_id=renewal_rv.id,
         source_document_id=doc_id7.id,
@@ -255,7 +343,7 @@ def seed(db: Session) -> None:
             "Regional Office (required for applicants aged 16 to 60)"
         ),
         kind="prerequisite",
-        sequence=2,
+        sequence=3,
     )
     db.add(fingerprints)
     db.flush()
@@ -322,8 +410,13 @@ def seed(db: Session) -> None:
             _link(db, req, cond_profession_empty, negated=True)  # profession stated
 
     # -- Dual-citizen document set (replaces the standard set) -----------
+    # "Completed application form" (previously its own dual-citizen-only
+    # document item here, sequence 20) is now the same K-35A form the
+    # new unconditional `application_form` prerequisite above already
+    # covers for every renewal case, dual citizen or not — removed here
+    # to avoid showing a citizen the same form as two separate checklist
+    # items.
     dual_docs = [
-        ("Completed application form", 20),
         ("Dual Citizenship Certificate with a photocopy.", 21),
         (
             "Foreign passport with any Sri Lankan passport if there is "

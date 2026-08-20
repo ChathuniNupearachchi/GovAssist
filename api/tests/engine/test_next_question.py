@@ -1,6 +1,7 @@
 """13.2 Next-question logic unit tests."""
 
 from app.engine.next_question import next_question
+from app.engine.renewal_intake import ATTRIBUTE_BY_PROMPT
 
 
 def test_answering_dual_citizen_changes_next_question(renewal_service_id, db):
@@ -18,8 +19,11 @@ def test_answering_dual_citizen_changes_next_question(renewal_service_id, db):
     )
 
     assert next_if_dual_citizen_true.prompt != next_if_dual_citizen_false.prompt
-    assert "section 19(2)" in next_if_dual_citizen_true.prompt
-    assert "section 19(2)" not in next_if_dual_citizen_false.prompt
+    # Keyed by attribute, not the prompt's exact wording — see
+    # conversational-intake's plain-language audit, which rewrote this
+    # question's text away from "section 19(2)" terminology entirely.
+    assert ATTRIBUTE_BY_PROMPT[next_if_dual_citizen_true.prompt] == "section_19_2"
+    assert ATTRIBUTE_BY_PROMPT[next_if_dual_citizen_false.prompt] != "section_19_2"
 
 
 def test_no_further_question_once_all_relevant_answered(renewal_service_id, db):

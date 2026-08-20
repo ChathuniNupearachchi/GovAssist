@@ -210,39 +210,153 @@ Intent classification lives here — situation versus open question.
 
 ---
 
-## Phase 6.5 — Hybrid search (vector + full-text)
+## Phase 6.5 sequence — Retrieval quality, generation safety, session persistence
 
-**Rationale.** Phase 5's threshold calibration showed no single cosine-
-similarity cutoff separates in-corpus from out-of-corpus queries: "What
-are the working hours at the Head Office?" (genuinely covered by
-`pages_e.php?id=7`) scored 0.8311 — worse than "How do I renew my
-driving license?" (0.7358), a topic the corpus doesn't cover at all.
-Exact terms are exactly what vector search handles worst and keyword
-search handles best — "Form K-35A", "section 19(2)", specific fee
-amounts. Fix retrieval quality here, in backend context, before Phase 7
-connects the mobile app and retrieval quality becomes something a user
-sees rather than something in a test log.
+Superseded by the sequence below: a baseline measurement, then Phases
+6.6 through 6.10, implemented and measured **in order** — each phase
+records its measured effect on a shared calibration set before the next
+begins, so the contribution of each change can be separated. Full
+proposal, spec deltas, design rationale, and task breakdown live in
+`openspec/changes/phase-6-6-to-6-10-rag-quality-and-sessions/`.
 
-**6.5.1 Full-text index** — add a `tsvector` column (or expression
-index) on `DOCUMENT_CHUNK.chunk_text`, `GIN`-indexed. No new dependency
-— Postgres full-text search is built in.
+**Rationale for placement.** Once Phase 7 connects the mobile app,
+retrieval quality and generation safety are things a citizen sees rather
+than things in a test log — fix them here, in backend context, first.
 
-**6.5.2 Hybrid ranking** — combine cosine similarity and full-text rank
-(e.g. reciprocal rank fusion, or a weighted blend) into one score.
-Retrieval scoping (approved documents only) and the self-check/
-reformulation flow from Phase 5 stay in place; only the ranking function
-underneath them changes.
+### Baseline — record before changing anything
 
-**6.5.3 Recalibrate** — re-run the Phase 5 threshold calibration queries
-against hybrid scores, including the two that motivated this phase:
-"working hours at the Head Office" should now rank above "driving
-license". Record the new measured values the same way Phase 5 did —
-don't assert improvement without checking.
+Run and record the cosine distance for a nine-query calibration set
+(six queries genuinely in the corpus, three genuinely absent) against
+the current, unmodified system. Two known reference points: "What is
+the fee for a name change amendment?" (0.5174) and "What are the
+working hours at the Head Office?" (0.8311, worse than the absent
+"How do I renew my driving license?" at 0.7358 — no single cosine
+threshold separates the two). All nine are re-measured after every
+phase below, in a running table in `design.md`.
 
-*Done when:* "What are the working hours at the Head Office?" retrieves
-`pages_e.php?id=7`, and "How do I renew my driving license?" returns no
-relevant match — both correct, where cosine similarity alone had them
-backwards.
+### Phase 6.6 — Structure-aware chunking (do this first)
+
+Numbered 6.6, not 6.5, because it must precede hybrid search — retuning
+ranking over badly-chunked content measures the wrong thing. The
+chunker currently flattens `<table>` and PDF tabular content to
+undifferentiated prose, which is exactly the shape of the corpus's two
+most consequential documents: the fee schedule (id=8) and the
+working-hours table (id=7). Fix: detect tables during extraction
+(BeautifulSoup `<table>`, pdfplumber `extract_tables()`), convert each
+to markdown, splice back in document order, and never split a table
+across chunks. Add a `metadata` JSONB column to `DOCUMENT_CHUNK`
+(document title, section heading, content type, source URL); prepend a
+compact context header to the *embedded* representation only — the
+stored, citizen-facing `chunk_text` stays raw. Re-chunk and re-embed all
+8 approved documents; embedding model unchanged.
+
+*Done when:* the id=8 and id=7 tables are each one structured chunk,
+every chunk carries populated metadata, the calibration set is
+re-measured, and Phase 5's existing RAG tests still pass.
+
+### Phase 6.7 — Hybrid search (vector + full-text)
+
+Add a GIN-indexed `tsvector` column on `DOCUMENT_CHUNK.chunk_text` (no
+new dependency — Postgres full-text search is built in). Blend cosine
+similarity and full-text rank (`plainto_tsquery`) via reciprocal rank
+fusion, which needs no tuned weight between the two signals. Approval-
+only scoping and the weak-match self-check are unchanged; only the
+ranking function beneath them changes. Recalibrate the accept/reject
+threshold from the measured blended scores, not intuition.
+
+*Done when:* "working hours at the Head Office" retrieves `pages_e.php
+?id=7` as the top result, "driving license" returns no relevant match,
+"Form K-35A" and "section 19(2)" both retrieve correctly, and all nine
+calibration queries resolve correctly.
+
+### Phase 6.8 — Embedding model upgrade (conditional)
+
+Gated on two checks, evaluated in order, neither assumed: (1) do 6.6 and
+6.7 already resolve all nine calibration queries with clear margin? If
+so, stop — record the upgrade as assessed and unnecessary. (2) Is
+available RAM with the full dev stack running (Docker, VS Code, dev
+server) on the target ASUS VivoBook (i3-1115G4, 2 cores, 20GB installed,
+no CUDA GPU) at least 6GB? `bge-base-en-v1.5` needs ~1.5–2GB resident.
+If both checks pass: migrate `DOCUMENT_CHUNK.embedding` to `vector(768)`,
+re-embed every chunk, verify the same model is used at ingestion and
+query time, recalibrate the threshold, and re-measure the full
+calibration set plus query-time embedding latency (on the citizen-
+waiting critical path).
+
+### Phase 6.9 — Citation verification (anti-hallucination)
+
+Generation is already grounded — the model sees only retrieved chunks —
+but nothing verifies it actually cited what it was given. Force
+generation into a structured schema via `client.messages.parse`
+(`answer`, `citations: [{chunk_id, quoted_span}]`), then verify every
+cited `chunk_id` is a member of the retrieved set — a set-membership
+check, zero runtime cost. A citation outside that set, or an empty
+citation list, triggers one retry with an explicit "cite only the
+provided chunks" instruction; a repeated failure falls back to the
+existing "no relevant match" response.
+
+*Done when:* a test injecting a fabricated `chunk_id` into a mocked
+model response is caught and rejected, an empty-citation answer is
+rejected, all real calibration queries still produce cited answers, and
+the retry path is exercised by a test.
+
+### Phase 6.10 — Persistent session memory
+
+`CASE_ANSWER` persists the facts, but the conversation itself doesn't
+survive closing the app, and nothing consistently populates
+`CASE.device_ref`. Add a `CHAT_MESSAGE` table (`id`, `case_id`, `role`,
+`content`, `created_at`, `intent` nullable, `cited_chunk_ids` nullable)
+persisting every message as the audit trail. The mobile app's per-device
+UUID (Expo SecureStore) resolves a returning device to its most recent
+unresolved case — device identified, person not. Redis caches the
+active case's recent messages and answered facts with a multi-hour TTL
+as a fast path; Postgres remains the durable record. A new endpoint
+returns the full message history for a device's active case.
+
+*Done when:* a case interrupted mid-intake and resumed returns both the
+correct next question and the prior conversation, closing and reopening
+restores the visible transcript, a device with no prior case starts
+cleanly, and clearing Redis still leaves the transcript restorable from
+Postgres.
+
+### Phase 6.11 — Agentic tool calling, contextual question phrasing, and visible extraction
+
+The open-question path (Phase 5/6.7's single-shot retrieve-then-generate)
+becomes a bounded `claude-sonnet-5` tool-use loop over six read-only
+tools — `retrieve_documents`, `get_fee`, `find_office`,
+`get_next_question`, `resolve_case`, `compare_amendment_vs_renewal` —
+each a thin wrapper over an existing engine/RAG function. The model
+selects which tools to call, possibly chaining several in one turn (a
+comparison question needs both services' fees, computed via two
+`get_fee` calls or the dedicated comparison tool, plus a document
+lookup for timelines); it never computes a fee, office, timeline, or
+requirement itself — every such value in its final answer is verified
+against what a tool call actually returned that turn, using the same
+verify → retry-once → fall back to the explicit no-relevant-match
+response shape 6.9 established for chunk citations. Every tool call —
+name, arguments, order, result — is logged as a per-turn trace,
+persisted on `CHAT_MESSAGE.tool_trace` (new nullable JSONB column) as
+both the audit trail and the demo artifact.
+
+Separately, the intake conversation gains two presentation-only layers,
+neither touching `next_question.py`'s selection logic or what gets
+recorded to `CASE_ANSWER`: a `claude-haiku-4-5` call rephrases the next
+pending question's surface wording for conversational fit (falling back
+to the canonical prompt on an attribute mismatch or any failure), and
+another names any fact just recorded plus any requirement the rules
+engine's own before/after diff shows was newly triggered by it — never
+a fee or office, and never an inferred fact.
+
+*Done when:* "Should I amend my passport or get a new one?" produces a
+multi-step tool trace with both fees, both timelines, and citations,
+retrievable from the transcript; a test confirms no fee/office/timeline
+in any response was generated rather than returned by a tool; "My
+passport expired last year" gets a contextually phrased age question
+whose answer still records to `age`; a rephrasing that drifts to the
+wrong attribute falls back to canonical; "I got married and my name is
+different now" acknowledges the marriage certificate requirement once
+the engine's diff shows it; and all rephrasing/tool-selection/malformed-
+argument failure paths fall back cleanly, verified by tests.
 
 ---
 

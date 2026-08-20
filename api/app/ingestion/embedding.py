@@ -23,3 +23,23 @@ def embed_text(text: str) -> list[float]:
     model = get_model()
     vector = model.encode(text, convert_to_numpy=True)
     return vector.tolist()
+
+
+def with_context_header(
+    text: str,
+    document_title: str,
+    section_heading: str | None,
+    source_url: str,
+) -> str:
+    """Prepend a compact context header to the text that gets EMBEDDED
+    (Phase 6.6) — never to the stored, citizen-facing `chunk_text`. A
+    chunk of bare table rows or list items is otherwise nearly
+    meaningless to a sentence embedding model with no surrounding prose;
+    this gives it the document/section/source context a human reader
+    gets for free from the page around it.
+    """
+    header_lines = [f"Document: {document_title}"]
+    if section_heading:
+        header_lines.append(f"Section: {section_heading}")
+    header_lines.append(f"Source: {source_url}")
+    return "\n".join(header_lines) + "\n\n" + text

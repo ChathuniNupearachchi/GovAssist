@@ -62,6 +62,7 @@ def resolve_requirements(
                     kind=requirement.kind,
                     sequence=requirement.sequence,
                     citation=_citation(db, requirement, rule_version),
+                    resources=requirement.resources,
                 )
             )
     return resolved

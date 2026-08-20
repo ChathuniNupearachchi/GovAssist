@@ -22,6 +22,7 @@ import pdfplumber
 from dotenv import load_dotenv
 from sqlalchemy.orm import Session
 
+from app.ingestion.blocks import ExtractedBlock
 from app.ingestion.config import TARGET_PDFS
 from app.models import SourceDocument
 from app.scraper.fetch import SNAPSHOT_DIR, fetch_and_snapshot, resolve_snapshot_path
@@ -169,3 +170,64 @@ def extract_pdf_text(source_document: SourceDocument) -> str:
         source_document.content_hash, method="claude-api", text=text, model=CLAUDE_MODEL
     )
     return text
+
+
+def _table_rows_to_markdown(rows: list[list[str | None]]) -> str:
+    grid = [[(cell or "").strip() for cell in row] for row in rows]
+    grid = [row for row in grid if any(row)]
+    if not grid:
+        return ""
+    header, *body = grid
+    lines = [
+        "| " + " | ".join(header) + " |",
+        "| " + " | ".join(["---"] * len(header)) + " |",
+    ]
+    for row in body:
+        padded = row + [""] * (len(header) - len(row))
+        lines.append("| " + " | ".join(padded[: len(header)]) + " |")
+    return "\n".join(lines)
+
+
+def extract_pdf_blocks(source_document: SourceDocument) -> list[ExtractedBlock]:
+    """Extract a PDF SourceDocument's content as an ordered list of
+    prose/table blocks.
+
+    pdfplumber's `extract_tables()` runs independently of `extract_text()`
+    per page, and each table it finds becomes its own block, appended
+    after that page's prose block — page-level document order, not exact
+    pixel-level interleaving within a page (this corpus's one detected
+    table sits alone on its page, so page-level ordering is exact here;
+    see design.md).
+
+    A scanned PDF (extracted via the Claude API, no text layer for
+    pdfplumber to read tables from either) has no table detection
+    available and is returned as prose blocks only, split on blank lines
+    — the same granularity Phase 3's chunker used.
+    """
+    cached = _read_extraction_cache(source_document.content_hash)
+    if cached is not None and cached["method"] == "claude-api":
+        paragraphs = [p.strip() for p in cached["text"].split("\n\n") if p.strip()]
+        return [ExtractedBlock("prose", p, None) for p in paragraphs]
+
+    snapshot_file = resolve_snapshot_path(source_document.snapshot_path)
+    blocks: list[ExtractedBlock] = []
+    with pdfplumber.open(snapshot_file) as pdf:
+        for page in pdf.pages:
+            text = page.extract_text()
+            if text:
+                for paragraph in [p.strip() for p in text.split("\n\n") if p.strip()]:
+                    blocks.append(ExtractedBlock("prose", paragraph, None))
+            for table in page.extract_tables():
+                markdown = _table_rows_to_markdown(table)
+                if markdown:
+                    blocks.append(ExtractedBlock("table", markdown, None))
+
+    if not blocks:
+        # No text layer and no cached Claude transcription yet (first
+        # run) — fall back to the existing text-only extraction, which
+        # itself triggers the Claude OCR path and caches the result.
+        text = extract_pdf_text(source_document)
+        paragraphs = [p.strip() for p in text.split("\n\n") if p.strip()]
+        blocks = [ExtractedBlock("prose", p, None) for p in paragraphs]
+
+    return blocks

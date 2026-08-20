@@ -7,7 +7,7 @@ def test_answer_question_never_carries_plan_fee_office_fields():
     # RAGResponse structurally cannot carry a requirement set, fee, or
     # office field — this is a type-level check, not just a runtime one.
     field_names = set(RAGResponse.__dataclass_fields__.keys())
-    assert field_names == {"text", "citations", "grounded"}
+    assert field_names == {"text", "citations", "grounded", "cited_chunk_ids", "tool_trace"}
     assert "requirements" not in field_names
     assert "fee" not in field_names
     assert "offices" not in field_names

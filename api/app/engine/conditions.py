@@ -39,8 +39,19 @@ def evaluate_condition(condition: Condition, answers: dict[str, str]) -> bool | 
             return False
 
     if condition.operator == "in":
-        allowed = [item.strip() for item in condition.value.split(",")]
-        return str(value) in allowed
+        # Case-insensitive: an "in" condition against free text (e.g.
+        # profession) would otherwise depend on the citizen's message —
+        # and the classifier's own extraction — happening to match the
+        # seeded value's exact casing, which isn't a real, reliable
+        # constraint (confirmed directly: the classifier extracted
+        # "doctor" for "I'm a doctor", lowercase, against a seeded
+        # Title Case list — see renewal-rule-data spec's "profession
+        # matching is case-insensitive" requirement). `equals` stays
+        # case-sensitive — every seeded `equals` value is a fixed
+        # enum-like token ("true"/"false") the classifier itself always
+        # produces in that exact case, so there's no equivalent gap.
+        allowed = [item.strip().lower() for item in condition.value.split(",")]
+        return str(value).strip().lower() in allowed
 
     raise ValueError(f"Unsupported condition operator: {condition.operator!r}")
 

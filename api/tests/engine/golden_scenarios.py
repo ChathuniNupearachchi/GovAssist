@@ -36,8 +36,10 @@ FINGERPRINTS_LABEL = (
     "Provide fingerprints in person at the Head Office or a Regional "
     "Office (required for applicants aged 16 to 60)"
 )
+APPLICATION_FORM_LABEL = "Completed application form K-35A"
 STANDARD_CORE = {
     "Photo studio acknowledgement",
+    APPLICATION_FORM_LABEL,
     FINGERPRINTS_LABEL,
     "Original Birth Certificate of the applicant with a photocopy.",
     "Original National Identity Card of the applicant with a photocopy",
@@ -53,8 +55,8 @@ SAMANERA_LABEL = (
 )
 DUAL_CITIZEN_SET = {
     "Photo studio acknowledgement",
+    APPLICATION_FORM_LABEL,
     FINGERPRINTS_LABEL,
-    "Completed application form",
     "Dual Citizenship Certificate with a photocopy.",
     "Foreign passport with any Sri Lankan passport if there is (with photocopy of Bio data pages)",
     "National Identity Card with a photocopy.",

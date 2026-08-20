@@ -2,9 +2,14 @@
 
 Given a case's currently recorded answers, returns the next Question the
 resolver still needs — the next one in sequence that (a) has no recorded
-answer and (b) is still relevant given what's already known (currently
-only `section_19_2`, which is skipped once `dual_citizen` is answered
-`false` — see `app.engine.renewal_intake.is_relevant`).
+answer and (b) is still relevant given what's already known. Relevance
+combines a code special-case (`section_19_2`, only relevant once
+`dual_citizen` is `true`) with any seeded `QUESTION_CONDITION` rows
+(e.g. `buddhist_priest`, skipped when `profession` already indicates a
+secular occupation) — see `app.engine.renewal_intake.is_relevant`. The
+selection algorithm itself — iterate in sequence, return the first
+unanswered-and-relevant question — is unchanged; only what "relevant"
+consults grew a data-driven source.
 """
 
 from __future__ import annotations
@@ -38,6 +43,6 @@ def next_question(
             return question
         if attribute in answers:
             continue
-        if is_relevant(attribute, answers):
+        if is_relevant(db, question, answers):
             return question
     return None

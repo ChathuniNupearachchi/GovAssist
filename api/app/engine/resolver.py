@@ -1,8 +1,9 @@
 """Top-level entry point: ties the condition evaluator, requirement
 resolver, fee calculator, and office resolver together into one case
 resolution, and implements the two behaviors that don't belong to any
-single component — the under-16 scope gate (4.x SCOPE GATE) and the
-amendment-alternative surfacing (AMENDMENT BRANCH).
+single component — the under-16 scope gate (4.x SCOPE GATE), the
+amendment-alternative surfacing (AMENDMENT BRANCH), and the intake-
+completeness guard (see `IncompleteCaseError`).
 """
 
 from __future__ import annotations
@@ -11,9 +12,15 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.engine.fees import resolve_fee
+from app.engine.next_question import next_question
 from app.engine.offices import resolve_offices
 from app.engine.requirements import resolve_requirements
-from app.engine.types import AmendmentAlternative, CaseResolution, ScopeGateResponse
+from app.engine.types import (
+    AmendmentAlternative,
+    CaseResolution,
+    IncompleteCaseError,
+    ScopeGateResponse,
+)
 from app.models import RuleVersion, Service
 
 RENEWAL_SERVICE_CODE = "passport-renewal"
@@ -55,12 +62,33 @@ def resolve_case(db: Session, answers: dict[str, str]) -> CaseResolution:
     Age SHALL be evaluated first, unconditionally, before any other
     resolution runs — an under-16 answer short-circuits straight to the
     scope-gate response with no requirements, fee, offices, or plan.
+
+    Every relevant renewal question SHALL be answered before a
+    requirement set is produced — raises `IncompleteCaseError` otherwise
+    rather than returning a `CaseResolution` built from partial answers.
+    A missing answer makes `condition_link_passes` fail *every* gating
+    condition it appears in, regardless of negation, so an incomplete
+    `answers` dict does not mean "everything not yet known to apply" —
+    it can silently suppress both sides of a branch at once (see
+    `IncompleteCaseError`'s docstring). Checked with the same
+    `next_question` this case's own intake already uses to decide
+    whether it's done, so there is exactly one definition of "complete",
+    not a second one duplicated here.
     """
     if "age" not in answers:
         raise ValueError("resolve_case requires an 'age' answer before resolving")
     age = float(answers["age"])
     if age < 16:
         return CaseResolution(scope_gate=ScopeGateResponse(reason=SCOPE_GATE_UNDER_16))
+
+    renewal_service = db.scalars(
+        select(Service).where(Service.code == RENEWAL_SERVICE_CODE)
+    ).first()
+    if renewal_service is None:
+        raise RuntimeError(f"Service '{RENEWAL_SERVICE_CODE}' has not been seeded.")
+    pending = next_question(db, renewal_service.id, answers)
+    if pending is not None:
+        raise IncompleteCaseError(pending.prompt)
 
     renewal_rv = _approved_rule_version(db, RENEWAL_SERVICE_CODE)
     requirements = resolve_requirements(db, renewal_rv.id, answers)

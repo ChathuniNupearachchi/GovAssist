@@ -1,6 +1,13 @@
 from fastapi import FastAPI
 
+from app.api import cases, chat, requirements, services
+
 app = FastAPI(title="GovAssist API")
+
+app.include_router(chat.router)
+app.include_router(cases.router)
+app.include_router(services.router)
+app.include_router(requirements.router)
 
 
 @app.get("/health")
