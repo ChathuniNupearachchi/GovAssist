@@ -1,4 +1,4 @@
-"""6.1 Claude-based classification.
+"""6.1 Classification, now on Gemini's free tier.
 
 Called only when the deterministic pass (`deterministic.py`) does not
 match. Classifies a truncated citizen message into an `intent`
@@ -8,31 +8,37 @@ use, and whether the message also asks a question — never a fee,
 office, or requirement (see the intent-classification spec's
 "classifier never produces plan-shaped output" requirement).
 
-Uses `claude-haiku-4-5` via `client.messages.parse()` with a Pydantic
-`output_format` — the SDK's structured-outputs path, equivalent to a
-raw `output_config.format` json_schema call. `extracted`'s schema is a
-fixed set of optional string fields (one per known attribute) rather
-than an open `{attribute: value}` map, because structured-output JSON
-schemas require `additionalProperties: false` on every object — an
-open map keyed by arbitrary attribute names can't be expressed that
-way; a fixed field per known attribute can.
+Routed through `app.llm.gateway.structured_completion` (langgraph-
+orchestration-branch's cost-engineering decision: this is not the
+citizen-facing output, so it runs on a free-tier model — Gemini by
+default, `LLM_MODEL_CLASSIFY` env var to override; see design.md).
+`extracted`'s schema is a fixed set of optional string fields (one per
+known attribute) rather than an open `{attribute: value}` map, because
+structured-output JSON schemas require `additionalProperties: false` on
+every object — an open map keyed by arbitrary attribute names can't be
+expressed that way; a fixed field per known attribute can.
 
 Below the confidence threshold, the router must not silently record an
 extracted fact against a wrongly-classified message, so this module
 enforces that itself: it discards `extracted` and forces
 `intent="question"` before returning, per the intent-classification
 spec's "low-confidence classification defaults to a question, not a
-silent fact" requirement.
+silent fact" requirement. A failed call (free tier unavailable, rate
+limited, malformed response) degrades the same way — any exception from
+the gateway is caught and treated identically to a below-threshold
+result, per the branch's "a free tier being unavailable must degrade
+gracefully, not error" constraint.
 """
 
 from __future__ import annotations
 
 from typing import Literal
 
-import anthropic
 from pydantic import BaseModel
 
-MODEL = "claude-haiku-4-5"
+from app.llm.gateway import structured_completion
+
+JOB = "classify"
 
 # Unvalidated against real citizen phrasing — see design.md's Risk note.
 # A single named constant, matching Phase 5's WEAK_MATCH_THRESHOLD
@@ -91,18 +97,26 @@ def _build_prompt(message: str, pending_question: str | None) -> str:
     return f'{pending_line}\n\nCitizen message: "{message}"'
 
 
+_FALLBACK = Classification(
+    intent="question", extracted=ExtractedFacts(), contains_question=True, confidence=0.0
+)
+
+
 def classify(message: str, pending_question: str | None) -> Classification:
-    client = anthropic.Anthropic()
-    response = client.messages.parse(
-        model=MODEL,
-        max_tokens=512,
-        system=SYSTEM_PROMPT,
-        messages=[
-            {"role": "user", "content": _build_prompt(message, pending_question)}
-        ],
-        output_format=Classification,
-    )
-    result = response.parsed_output
+    try:
+        result = structured_completion(
+            JOB,
+            system=SYSTEM_PROMPT,
+            user=_build_prompt(message, pending_question),
+            response_model=Classification,
+            max_tokens=512,
+        )
+    except Exception:
+        # Free tier unavailable, rate limited, or an unparseable response
+        # — degrade the same way a below-threshold classification already
+        # does: no silently-recorded fact, treated as an unanswered
+        # question rather than surfacing an error to the citizen.
+        return _FALLBACK
 
     if result.confidence < CONFIDENCE_THRESHOLD:
         return result.model_copy(

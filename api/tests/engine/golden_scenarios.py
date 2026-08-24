@@ -63,6 +63,15 @@ DUAL_CITIZEN_SET = {
     "Birth Certificate with a photocopy.",
 }
 AMENDMENT_DOCS = {"Passport", "Marriage certificate (to confirm name change)"}
+EDUCATIONAL_CERT_LABEL = (
+    "Educational Certificate related to the profession and an acceptable "
+    "document to confirm your service, with photocopies"
+)
+NEW_NIC_LABEL = (
+    "Obtain a new National Identity Card before applying (required for "
+    "dual citizenship obtained under section 19(2) of the amended "
+    "Citizenship Act 18 of 1948)"
+)
 
 GOLDEN_SCENARIOS = [
     {
@@ -172,6 +181,145 @@ GOLDEN_SCENARIOS = [
         "expect_amendment_alternative": True,
         "expect_scope_gate": False,
     },
+    # -- 11-20: added for langgraph-orchestration-branch's golden set
+    # growth (Task Group 3) — deliberately chosen to exercise condition
+    # interactions the original ten never touch, found by reading
+    # app/seed/phase4_renewal.py's actual condition links rather than
+    # guessing: an AND-of-two-conditions requirement (new_nic) whose
+    # positive case no scenario had ever hit, both age boundaries of the
+    # fingerprint requirement (16-60 inclusive, expressed as two
+    # lessThan conditions), the profession-stated branch, and a
+    # dual-citizen-replaces-the-standard-set interaction with
+    # buddhist_priest that could plausibly double-add a requirement if
+    # the resolver's set-replacement logic had a bug.
+    {
+        "name": "11. Under-16 applicant returns the scope gate",
+        "answers": {**BASE, "age": "15", "district": "Colombo"},
+        "expected_labels": set(),
+        "expected_fee": None,
+        "expected_offices": set(),
+        "expect_conflict_note": False,
+        "expect_amendment_alternative": False,
+        "expect_scope_gate": True,
+    },
+    {
+        "name": "12. Exactly 16 — fingerprint requirement's lower boundary",
+        "answers": {**BASE, "age": "16", "district": "Colombo"},
+        "expected_labels": STANDARD_CORE | {CURRENT_PASSPORT_LABEL},
+        "expected_fee": 10000.00,
+        "expected_offices": {"Head Office", "Kurunegala Regional Office", "Overseas Sri Lankan Missions"},
+        "expect_conflict_note": False,
+        "expect_amendment_alternative": False,
+        "expect_scope_gate": False,
+    },
+    {
+        "name": "13. Exactly 60 — fingerprint requirement's upper boundary, still included",
+        "answers": {**BASE, "age": "60", "district": "Colombo"},
+        "expected_labels": STANDARD_CORE | {CURRENT_PASSPORT_LABEL},
+        "expected_fee": 10000.00,
+        "expected_offices": {"Head Office", "Kurunegala Regional Office", "Overseas Sri Lankan Missions"},
+        "expect_conflict_note": False,
+        "expect_amendment_alternative": False,
+        "expect_scope_gate": False,
+    },
+    {
+        "name": "14. Exactly 61 — one past the boundary, fingerprints now excluded",
+        "answers": {**BASE, "age": "61", "district": "Colombo"},
+        "expected_labels": (STANDARD_CORE | {CURRENT_PASSPORT_LABEL}) - {FINGERPRINTS_LABEL},
+        "expected_fee": 10000.00,
+        "expected_offices": {"Head Office", "Kurunegala Regional Office", "Overseas Sri Lankan Missions"},
+        "expect_conflict_note": False,
+        "expect_amendment_alternative": False,
+        "expect_scope_gate": False,
+    },
+    {
+        "name": "15. Dual citizen under section 19(2) — the AND-condition positive case",
+        "answers": {
+            **BASE, "age": "30", "district": "Colombo",
+            "dual_citizen": "true", "section_19_2": "true",
+        },
+        "expected_labels": DUAL_CITIZEN_SET | {NEW_NIC_LABEL},
+        "expected_fee": 10000.00,
+        "expected_offices": {"Head Office", "Kurunegala Regional Office", "Overseas Sri Lankan Missions"},
+        "expect_conflict_note": False,
+        "expect_amendment_alternative": False,
+        "expect_scope_gate": False,
+    },
+    {
+        "name": "16. Section 19(2) alone, not a dual citizen — the AND-condition near-miss",
+        "answers": {**BASE, "age": "30", "district": "Colombo", "section_19_2": "true"},
+        # new_nic requires BOTH dual_citizen AND section_19_2 — section
+        # 19(2) alone must NOT trigger it. A resolver that treated these
+        # as an OR (or ignored section_19_2 for a non-dual-citizen case
+        # incorrectly) would fail this by including NEW_NIC_LABEL here.
+        "expected_labels": STANDARD_CORE | {CURRENT_PASSPORT_LABEL},
+        "expected_fee": 10000.00,
+        "expected_offices": {"Head Office", "Kurunegala Regional Office", "Overseas Sri Lankan Missions"},
+        "expect_conflict_note": False,
+        "expect_amendment_alternative": False,
+        "expect_scope_gate": False,
+    },
+    {
+        "name": "17. Profession stated — the educational certificate branch",
+        "answers": {**BASE, "age": "30", "district": "Colombo", "profession": "Doctor"},
+        "expected_labels": STANDARD_CORE | {CURRENT_PASSPORT_LABEL, EDUCATIONAL_CERT_LABEL},
+        "expected_fee": 10000.00,
+        "expected_offices": {"Head Office", "Kurunegala Regional Office", "Overseas Sri Lankan Missions"},
+        "expect_conflict_note": False,
+        "expect_amendment_alternative": False,
+        "expect_scope_gate": False,
+    },
+    {
+        "name": "18. Buddhist priest who is also a dual citizen — the set-replacement near-miss",
+        "answers": {
+            **BASE, "age": "30", "district": "Colombo",
+            "dual_citizen": "true", "buddhist_priest": "true",
+        },
+        # The Samanera certificate is only linked within the standard
+        # document set (itself gated on NOT dual_citizen) — a dual
+        # citizen's document set replaces the standard set entirely, so
+        # buddhist_priest=true here must NOT add the Samanera
+        # certificate. A resolver that evaluated buddhist_priest's
+        # condition independently of which set is active would fail
+        # this by including it.
+        "expected_labels": DUAL_CITIZEN_SET,
+        "expected_fee": 10000.00,
+        "expected_offices": {"Head Office", "Kurunegala Regional Office", "Overseas Sri Lankan Missions"},
+        "expect_conflict_note": False,
+        "expect_amendment_alternative": False,
+        "expect_scope_gate": False,
+    },
+    {
+        "name": "19. No current passport and a changed name, together",
+        "answers": {
+            **BASE, "age": "30", "district": "Vavuniya",
+            "holds_passport": "false", "name_changed": "true",
+        },
+        # The marriage certificate's condition (name_changed) is
+        # independent of holds_passport — a resolver that conflated "no
+        # current passport" with "nothing to confirm the old name
+        # against" and dropped the marriage certificate would fail this.
+        "expected_labels": STANDARD_CORE | {MARRIAGE_CERT_LABEL},
+        "expected_fee": 10000.00,
+        "expected_offices": {"Head Office", "Vavuniya Regional Office", "Overseas Sri Lankan Missions"},
+        "expect_conflict_note": False,
+        "expect_amendment_alternative": True,
+        "expect_scope_gate": False,
+    },
+    {
+        "name": "20. Everything at once — boundary age, dual citizen, section 19(2), urgent, Kandy",
+        "answers": {
+            **BASE, "age": "16", "district": "Kandy",
+            "dual_citizen": "true", "section_19_2": "true",
+            "service_basis": "urgent",
+        },
+        "expected_labels": DUAL_CITIZEN_SET | {NEW_NIC_LABEL},
+        "expected_fee": 20000.00,
+        "expected_offices": {"Head Office", "Kandy Regional Office", "Overseas Sri Lankan Missions"},
+        "expect_conflict_note": True,
+        "expect_amendment_alternative": False,
+        "expect_scope_gate": False,
+    },
 ]
 
-assert len(GOLDEN_SCENARIOS) == 10, "BACKEND_PLAN.md Phase 4.7 lists exactly ten scenarios"
+assert len(GOLDEN_SCENARIOS) == 20, "10 original (BACKEND_PLAN.md Phase 4.7) + 10 added for langgraph-orchestration-branch"

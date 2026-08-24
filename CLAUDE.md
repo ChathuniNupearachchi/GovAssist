@@ -83,9 +83,15 @@ English only for this build.
 - Celery — scraping, chunking and re-embedding queue
 - Alembic — migrations
 - httpx + BeautifulSoup — scraper
-- pdfplumber — PDF extraction
+- pdfplumber — PDF extraction; pytesseract + PyMuPDF and Gemini Flash
+  vision, free-tier fallbacks for the scanned PDFs pdfplumber can't read
+  (see below)
 - sentence-transformers — local embeddings, CPU only, no GPU needed
-- Claude API — three narrow jobs only (see below)
+- LiteLLM — provider gateway (`app/llm/gateway.py`); which model serves
+  a given non-agent job is a config value (`LLM_MODEL_<JOB>` env vars),
+  not a code change
+- Claude API and Gemini's free tier — six narrow jobs, split across two
+  providers by whether the output is citizen-facing (see below)
 - OpenTelemetry — tracing
 
 ### Infrastructure
@@ -102,34 +108,67 @@ English only for this build.
   so the layer added a hop without adding value. FastAPI calls the rules
   engine directly.
 
-## How the Claude API is used
+## How the LLM APIs are used
 
-Six jobs. Still narrow — every one either extracts/classifies existing
-text, or composes prose around values a human-auditable computation
-(the rules engine, retrieval, or a direct database read) already
-produced. None of them decides a fee, office, or requirement:
+Six jobs, split across two providers by one rule (`langgraph-
+orchestration-branch`'s cost-engineering decision, driven by this being
+a fixed-budget student project): **the tool-using agent that composes
+citizen-facing answers is the only output anyone actually sees and is
+judged on, so it alone stays on Claude — a paid model, chosen for
+quality.** Every other job is evaluation, ingestion, or presentation
+work that runs on every turn (or off the citizen-facing path entirely)
+regardless of what the citizen sees next, so it runs on Gemini's free
+tier instead. Provider selection is a config value, not a code
+choice — see `app/llm/gateway.py` (LiteLLM) and `LLM_MODEL_<JOB>` env
+vars — so any of these can be moved back to Claude, or to any other
+LiteLLM-supported provider, without touching a call site.
 
-1. Parsing scraped text into structured draft rules (never live)
+Still narrow regardless of provider — every job either extracts/
+classifies existing text, or composes prose around values a
+human-auditable computation (the rules engine, retrieval, or a direct
+database read) already produced. None of them decides a fee, office, or
+requirement:
+
+1. Parsing scraped text into structured draft rules (never live) —
+   currently still Claude; not yet routed through the gateway
 2. Classifying a citizen's chat message: intent (situation, question, or
    answer), any facts it states, and whether it also asks a question —
-   never a fee, office, or requirement
+   never a fee, office, or requirement. **Gemini's free tier**
+   (`app.chat.classifier`, job `classify`).
 3. Answering an open question as a tool-using agent: selecting which of
    six read-only tools to call (retrieval and rules-engine lookups
    among them), possibly chaining several in one turn, and composing
    the final prose — every fee/office/timeline/requirement value it
    states is verified against what a tool call actually returned that
-   turn, structured output the same way job 2's classification is
+   turn, structured output the same way job 2's classification is.
+   **Claude** (`app.chat.agent`) — the one job kept there; see above.
 4. Extracting text from scanned PDFs when there is no text layer for
    pdfplumber to read — OCR-by-LLM, not a citizen-facing job. Scanned
    PDFs are common in Sri Lankan government sources generally, not just
-   Immigration, so this recurs across departments.
+   Immigration, so this recurs across departments. **A free three-stage
+   chain first** (pdfplumber's text layer, then Tesseract OCR — free,
+   local, unlimited — then Gemini Flash vision only if Tesseract's
+   output fails a quality check), **Claude as a last resort** behind
+   `PDF_OCR_CLAUDE_LAST_RESORT_ENABLED` if every free stage fails
+   (`app.ingestion.pdf_extraction`).
 5. Rephrasing an intake question's surface wording for conversational
    fit — never which attribute it asks about (that's `next_question.py`,
-   untouched) or what a citizen's answer records to
+   untouched) or what a citizen's answer records to. **Gemini's free
+   tier** (`app.chat.rephrase`, job `rephrase`).
 6. Acknowledging a fact the citizen just stated, and — only when the
    rules engine's own before/after diff shows it — naming a requirement
    that fact newly triggered; never a fee or office, and never a fact
-   or requirement the engine didn't actually record or compute
+   or requirement the engine didn't actually record or compute. **Gemini's
+   free tier** (`app.chat.acknowledge`, job `acknowledge`) — not one of
+   the branch's originally-named jobs, but the same profile as 2 and 5,
+   so moved for the same reason.
+
+Every job routed to Gemini keeps its original fallback path unchanged
+(a low-confidence or failed classification still defaults to a question
+with no recorded fact; a failed rephrasing or acknowledgement still
+falls back to the canonical prompt or no acknowledgement at all) — a
+free tier being rate-limited or unavailable degrades a turn, it never
+errors one.
 
 Citizens never receive ungrounded LLM output. Every generated answer
 (single-shot or tool-composed) cites the source chunks and/or tool
@@ -139,7 +178,8 @@ answer is returned; a fabricated or missing citation, or a value no
 tool call actually produced, is rejected and retried once, then falls
 back to the same explicit non-answer weak retrieval produces. If
 nothing relevant is found, or nothing can be verified, the system says
-so rather than guessing.
+so rather than guessing. This holds regardless of which provider
+generated the answer — citation verification is not Claude-specific.
 
 ## RAG layer
 

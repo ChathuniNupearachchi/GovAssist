@@ -283,6 +283,18 @@ query time, recalibrate the threshold, and re-measure the full
 calibration set plus query-time embedding latency (on the citizen-
 waiting critical path).
 
+**Correction (`langgraph-orchestration-branch`, measured):** this
+phase's premise assumed RAM was often tight on the target machine (a
+figure of "~4GB often available" circulated in later planning for this
+same phase, superseding it here). Directly measured instead, repeatedly,
+across that branch's Task Groups 1–2 and its own RAM-gate task: available
+RAM with the dev stack running has consistently been **~7.5–8.5GB free**
+of the 20GB installed, not ~4GB, and loading `bge-base-en-v1.5` alongside
+the shipped embedding model measured ~8.33GB free — the 6GB gate above
+passes comfortably. RAM is not the binding constraint this phase assumed
+it might be; do not cite "~4GB often available" for this machine going
+forward.
+
 ### Phase 6.9 — Citation verification (anti-hallucination)
 
 Generation is already grounded — the model sees only retrieved chunks —
@@ -424,3 +436,26 @@ Every phase starts with an OpenSpec proposal:
 
 Read it, approve it, then implement. Proposals land in
 `openspec/changes/` as a permanent record.
+
+---
+
+## Database backups
+
+The dev Postgres volume (`govassist_postgres_data`) is not durable —
+it was lost outright on 2026-08-24 when Docker's disk image filled the
+host drive and had to be reinstalled/relocated. Rebuilding it from
+scratch (migrations + seeds + re-ingestion) is possible because the PDF
+extraction cache (`api/data/snapshots/*.extraction.json`) and the
+scraped content it derives from are reproducible, but a rebuild is not
+free — it re-hits the live immigration.gov.lk site and burns time
+re-deriving state that a backup would have preserved instantly.
+
+**Take a `pg_dump` after every phase**, not just before something risky:
+
+```
+docker exec govassist-postgres-1 pg_dump -U govassist -d govassist > E:\govassist-backup.sql
+```
+
+Store it outside the Docker volume (E:\ here) so a repeat of the disk
+failure above can't take out both the live database and its backup
+together.

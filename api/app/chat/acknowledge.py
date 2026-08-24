@@ -9,20 +9,30 @@ phrase them; it has no way to introduce an unrecorded fact or an
 uncomputed requirement, and it is never given a fee or office value to
 mention in the first place. See design.md's "Acknowledgement:
 engine-computed diff, not model-asserted content" decision.
+
+Routed through `app.llm.gateway.structured_completion` to Gemini's free
+tier by default (`LLM_MODEL_ACKNOWLEDGE` to override) — langgraph-
+orchestration-branch's cost-engineering decision. Not one of the branch
+request's explicitly-named jobs (classify/rephrase were named; this
+wasn't), but the same profile applies: presentation-only wording around
+already-computed facts, running on every turn that records something,
+with the structural fee/office backstop below independent of which
+model phrases the text. Flagged for confirmation rather than assumed
+silently correct.
 """
 
 from __future__ import annotations
 
 import re
 
-import anthropic
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.engine.requirements import resolve_requirements
 from app.engine.resolver import RENEWAL_SERVICE_CODE, _approved_rule_version
+from app.llm.gateway import structured_completion
 
-MODEL = "claude-haiku-4-5"
+JOB = "acknowledge"
 MAX_TOKENS = 256
 
 SYSTEM_PROMPT = """You write a short, warm acknowledgement of facts a \
@@ -81,15 +91,14 @@ def build_acknowledgement(
         )
 
     try:
-        client = anthropic.Anthropic()
-        response = client.messages.parse(
-            model=MODEL,
-            max_tokens=MAX_TOKENS,
+        result = structured_completion(
+            JOB,
             system=SYSTEM_PROMPT,
-            messages=[{"role": "user", "content": prompt}],
-            output_format=Acknowledgement,
+            user=prompt,
+            response_model=Acknowledgement,
+            max_tokens=MAX_TOKENS,
         )
-        text = response.parsed_output.text
+        text = result.text
     except Exception:
         return None
 

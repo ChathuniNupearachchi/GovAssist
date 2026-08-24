@@ -439,6 +439,14 @@ def seed(db: Session) -> None:
         _link(db, req, cond_dual_citizen, negated=False)
 
     # -- Fees (source: pages_e.php?id=8) ---------------------------------
+    # The below-16 tier reuses `cond_age_lt_16` (already created above
+    # for the fingerprints requirement) via FeeRule.condition_id — the
+    # Phase 2 schema already supports a conditional fee rule, this is
+    # its first use. Added for langgraph-orchestration-branch's
+    # tool-selection-instability fix: a golden-set scenario surfaced
+    # that `get_fee` had no way to return this tier at all, since it was
+    # never seeded as structured data, only present in the source page's
+    # text — see design.md.
     db.add_all(
         [
             FeeRule(
@@ -451,6 +459,20 @@ def seed(db: Session) -> None:
                 rule_version_id=renewal_rv.id,
                 source_document_id=doc_id8.id,
                 base_amount=20000.00,
+                basis="urgent",
+            ),
+            FeeRule(
+                rule_version_id=renewal_rv.id,
+                source_document_id=doc_id8.id,
+                condition_id=cond_age_lt_16.id,
+                base_amount=3000.00,
+                basis="normal",
+            ),
+            FeeRule(
+                rule_version_id=renewal_rv.id,
+                source_document_id=doc_id8.id,
+                condition_id=cond_age_lt_16.id,
+                base_amount=9000.00,
                 basis="urgent",
             ),
         ]

@@ -1,5 +1,7 @@
 """6.2 Top-level answer entry point unit tests."""
 
+import pytest
+
 from app.rag.answer import NO_MATCH_TEXT, RAGResponse, answer_question
 
 
@@ -13,6 +15,7 @@ def test_answer_question_never_carries_plan_fee_office_fields():
     assert "offices" not in field_names
 
 
+@pytest.mark.real_api
 def test_no_relevant_match_returns_explicit_response_no_generation_call(db):
     response = answer_question(db, "What is the weather forecast for Paris tomorrow?")
     assert response.grounded is False
@@ -20,6 +23,7 @@ def test_no_relevant_match_returns_explicit_response_no_generation_call(db):
     assert response.citations == []
 
 
+@pytest.mark.real_api
 def test_grounded_answer_returns_citations(db):
     response = answer_question(db, "What is an authorised photo studio?")
     assert response.grounded is True

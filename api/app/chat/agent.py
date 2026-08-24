@@ -19,6 +19,16 @@ requests a system-capability tool nor calls `submit_answer`), that is
 treated as an implicit "I don't know" — the same explicit no-relevant-
 match response weak retrieval itself produces, not a bare, ungrounded
 chat reply.
+
+Task Group 7 (Langfuse): every model call is wrapped as a generation
+span, every tool call as a tool span, and — since this loop is exactly
+where the tool-selection instability Task Group 3/4 measured actually
+happens — every `None` return (a refused turn) records *why*
+(`_refusal_reason`) on the top-level trace, not just that it happened.
+A trace tree alone shows which tools were or weren't called; the reason
+tag makes the five structurally distinct refusal causes (API failure,
+truncated response, no tool call ever tried, tool-iteration limit,
+failed verification) filterable without re-reading every trace by hand.
 """
 
 from __future__ import annotations
@@ -32,6 +42,7 @@ from sqlalchemy.orm import Session
 
 from app.chat.tools import TOOL_SCHEMAS, call_tool
 from app.engine.types import Citation
+from app.observability.tracing import traced_generation, traced_tool, turn_trace
 
 MODEL = "claude-sonnet-5"
 MAX_TOOL_ITERATIONS = 6
@@ -67,14 +78,32 @@ a question would otherwise need one, prefer answering with get_fee \
 (called for each relevant service) and retrieve_documents instead of \
 asking — most comparison questions can be answered generally that way.
 
+If a question names or implies the applicant's age — including asking \
+specifically about a child's or minor's fee — pass that age to get_fee; \
+some services have a separate, lower fee tier for applicants under 16, \
+and get_fee only returns it when age is given.
+
 When you have enough information to answer, call submit_answer with:
 - answer: your plain-language answer text
 - chunk_citations: every retrieved chunk your answer actually draws on \
-(empty list if you used none) — this covers anything you learned from \
-document text, including a document or step merely mentioned in a \
-passage
-- fee_values_used: every fee amount (as numbers) your answer states
-- office_names_used: every office name your answer states
+(empty list only if retrieve_documents was never called, or its results \
+contributed nothing to your answer at all) — this covers anything you \
+learned from document text, including a fee, office, or step merely \
+mentioned in a passage, and including a side note or caveat, not just \
+the answer's main point. If you called retrieve_documents and your \
+answer states ANY fact, number, or detail that came from those results \
+— even in passing — you MUST list that chunk's id here. Leaving \
+chunk_citations empty after calling retrieve_documents is only correct \
+when you end up not using its results at all.
+- fee_values_used: ONLY a fee amount you got from get_fee, resolve_case, \
+or compare_amendment_vs_renewal. Do not put a fee amount here just \
+because a retrieved passage mentions it (e.g. a fine or fee stated in \
+cited document text) — that is already covered by chunk_citations. \
+Leave this empty unless you actually called one of those three tools.
+- office_names_used: ONLY an office name you got from find_office or \
+resolve_case. Do not put an office name here just because a retrieved \
+passage mentions it — that is already covered by chunk_citations. Leave \
+this empty unless you actually called one of those two tools.
 - requirement_labels_used: ONLY a requirement label exactly as returned \
 by resolve_case or compare_amendment_vs_renewal, when you assert it is \
 officially part of THIS CITIZEN'S case checklist. Do not put a document \
@@ -107,8 +136,19 @@ SUBMIT_ANSWER_SCHEMA = {
                     "required": ["chunk_id", "quoted_span"],
                 },
             },
-            "fee_values_used": {"type": "array", "items": {"type": "number"}},
-            "office_names_used": {"type": "array", "items": {"type": "string"}},
+            "fee_values_used": {
+                "type": "array",
+                "items": {"type": "number"},
+                "description": "Only fee amounts obtained from get_fee/resolve_case/"
+                "compare_amendment_vs_renewal — not a fee amount merely mentioned in "
+                "cited document text.",
+            },
+            "office_names_used": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "Only office names obtained from find_office/resolve_case — "
+                "not an office name merely mentioned in cited document text.",
+            },
             "requirement_labels_used": {"type": "array", "items": {"type": "string"}},
         },
         "required": ["answer", "chunk_citations", "fee_values_used", "office_names_used", "requirement_labels_used"],
@@ -116,6 +156,17 @@ SUBMIT_ANSWER_SCHEMA = {
 }
 
 ALL_SCHEMAS = [*TOOL_SCHEMAS, SUBMIT_ANSWER_SCHEMA]
+
+# Tools usable with no Case ID at all — retrieve_documents, get_fee,
+# find_office never need one (see SYSTEM_PROMPT). Used to restrict the
+# forced first-turn tool choice (see the "tool-selection instability"
+# fix) when no case_id was given: without this restriction, a model
+# forced to call *something* on turn 0 with no case in hand sometimes
+# grabbed a case-scoped tool with a placeholder id instead of the
+# obviously-relevant retrieve_documents/get_fee — observed directly,
+# wasting an iteration on a call that could only ever fail.
+_CASE_INDEPENDENT_TOOL_NAMES = {"retrieve_documents", "get_fee", "find_office"}
+CASE_INDEPENDENT_SCHEMAS = [s for s in TOOL_SCHEMAS if s["name"] in _CASE_INDEPENDENT_TOOL_NAMES]
 
 
 @dataclass(frozen=True)
@@ -177,6 +228,31 @@ def _collect_seen_values(
             office_names.add(o["name"])
 
 
+def _value_appears_in_cited_chunk_text(value: float, chunk_citations: list[dict], chunk_lookup: dict[str, dict]) -> bool:
+    """A fee amount is also considered grounded when it appears, as
+    text, within a chunk the submission actually cited — not just when
+    it came from get_fee/resolve_case/compare_amendment_vs_renewal.
+    Structural backstop for a real failure observed directly: a
+    correctly-retrieved, correctly-cited chunk's own text stated a fine
+    amount (e.g. "a fine of Rs. 20,000"), the model reported it in
+    fee_values_used per the system prompt's instruction at the time, and
+    verification rejected an answer that was, in fact, fully grounded —
+    the chunk_citations check alone already proves it, this only widens
+    what counts as proof for a number specifically. Requires the chunk
+    to be a genuine citation (checked separately, above) and the value
+    to actually appear in that chunk's own text — never trusts an
+    uncited chunk or a value absent from the cited text."""
+    variants = {f"{value:,.2f}", f"{value:.2f}", f"{int(value):,}", str(int(value))}
+    for citation in chunk_citations:
+        chunk = chunk_lookup.get(citation.get("chunk_id"))
+        if chunk is None:
+            continue
+        text = chunk.get("text", "")
+        if any(variant in text for variant in variants):
+            return True
+    return False
+
+
 def _verify_submission(
     submission: dict,
     chunk_lookup: dict[str, dict],
@@ -200,8 +276,11 @@ def _verify_submission(
         )
 
     for value in submission.get("fee_values_used") or []:
-        if not any(abs(float(value) - seen) < 0.01 for seen in fee_values):
-            return f"fee_values_used includes {value}, which no tool call this turn returned."
+        if any(abs(float(value) - seen) < 0.01 for seen in fee_values):
+            continue
+        if _value_appears_in_cited_chunk_text(float(value), chunk_citations, chunk_lookup):
+            continue
+        return f"fee_values_used includes {value}, which no tool call this turn returned."
 
     for name in submission.get("office_names_used") or []:
         if name not in office_names:
@@ -249,6 +328,27 @@ def answer_with_agent(db: Session, query: str, case_id: str | None = None) -> Ag
     at all and work either way. Returns None when no tool-grounded
     answer could be produced — the caller falls back to the explicit
     no-relevant-match response, same as a weak retrieval match."""
+    with turn_trace(case_id, query) as turn_span:
+        result, reason = _run_loop(db, query, case_id)
+        if result is None:
+            turn_span.update(output={"refused": True, "refusal_reason": reason})
+        else:
+            turn_span.update(
+                output={
+                    "refused": False,
+                    "answer": result.text,
+                    "tool_calls": [r.tool for r in result.trace],
+                }
+            )
+        return result
+
+
+def _run_loop(db: Session, query: str, case_id: str | None) -> tuple[AgentAnswer | None, str | None]:
+    """The tool-use loop itself, factored out of `answer_with_agent` so
+    every exit point can be tagged with a short, distinct
+    `refusal_reason` string — that tag, not just the trace tree, is what
+    lets a Langfuse view group refused turns by cause rather than
+    requiring every trace to be read by hand."""
     client = anthropic.Anthropic()
     messages: list[dict] = [{"role": "user", "content": _build_initial_message(query, case_id)}]
     trace: list[ToolCallRecord] = []
@@ -270,18 +370,49 @@ def answer_with_agent(db: Session, query: str, case_id: str | None = None) -> Ag
 
     while True:
         try:
-            response = client.messages.create(
-                model=MODEL,
-                max_tokens=MAX_TOKENS,
-                system=SYSTEM_PROMPT,
-                tools=ALL_SCHEMAS,
-                messages=messages,
-            )
+            if len(messages) == 1:
+                # First turn: force a real tool call — `tools` excludes
+                # submit_answer and `tool_choice` requires one of them,
+                # so the model cannot decline (plain text) or submit a
+                # final answer without having tried anything first. This
+                # replaces relying on the model to *choose* to look
+                # (the original design) with making "looked at least
+                # once" structurally unavoidable — see design.md's
+                # "tool-selection instability" fix: observed directly
+                # that the same query sometimes answered correctly
+                # (retrieved, cited, grounded) and sometimes refused
+                # outright with no tool call at all, run to run. When no
+                # case_id is available, only the case-independent tools
+                # are offered — forcing a choice among all six otherwise
+                # let the model grab a case-scoped tool with a
+                # placeholder id, wasting an iteration on a call that
+                # could only ever fail (also observed directly).
+                first_turn_schemas = TOOL_SCHEMAS if case_id else CASE_INDEPENDENT_SCHEMAS
+                with traced_generation("agent_turn_0", MODEL, messages) as gen:
+                    response = client.messages.create(
+                        model=MODEL,
+                        max_tokens=MAX_TOKENS,
+                        system=SYSTEM_PROMPT,
+                        tools=first_turn_schemas,
+                        tool_choice={"type": "any"},
+                        messages=messages,
+                    )
+                    gen.update(output={"stop_reason": response.stop_reason})
+            else:
+                with traced_generation("agent_turn", MODEL, messages) as gen:
+                    response = client.messages.create(
+                        model=MODEL,
+                        max_tokens=MAX_TOKENS,
+                        system=SYSTEM_PROMPT,
+                        tools=ALL_SCHEMAS,
+                        messages=messages,
+                    )
+                    gen.update(output={"stop_reason": response.stop_reason})
         except Exception:
             # An API failure during tool selection — same explicit
             # no-relevant-match response as any other failure to
             # produce a tool-grounded answer, not a crash.
-            return None
+            return None, "api_failure"
         messages.append({"role": "assistant", "content": response.content})
 
         if response.stop_reason == "max_tokens":
@@ -290,7 +421,7 @@ def answer_with_agent(db: Session, query: str, case_id: str | None = None) -> Ag
             # a truncated submit_answer's fields.
             truncation_retries += 1
             if truncation_retries > MAX_VERIFICATION_RETRIES:
-                return None
+                return None, "truncation_exhausted"
             messages.append(
                 {
                     "role": "user",
@@ -302,15 +433,19 @@ def answer_with_agent(db: Session, query: str, case_id: str | None = None) -> Ag
 
         tool_use_blocks = [b for b in response.content if b.type == "tool_use"]
         if not tool_use_blocks:
-            # No tool call at all. If nothing has been tried yet this
-            # turn, give one nudge to actually check before giving up —
-            # observed directly: the model sometimes answers "I don't
-            # know" in prose without calling retrieve_documents first,
-            # even though a wider retrieval would have found something
-            # (the same content this project's own weak-match retry
-            # exists to give a second chance to). Once at least one tool
-            # has actually been tried, a further no-tool-call response is
-            # the real "I don't know" — see module docstring.
+            # No tool call at all. This branch is now structurally
+            # unreachable on the first turn — `tool_choice={"type":
+            # "any"}` there forces a real tool call, so the model cannot
+            # decline without having looked (see the forced-first-call
+            # block above; this superseded the original design, where
+            # the model merely being *nudged* to try a tool proved
+            # unreliable — observed directly: the same query sometimes
+            # answered correctly after retrieving, and sometimes refused
+            # outright with zero tool calls, run to run). Kept as a
+            # defensive fallback for a later turn (after at least one
+            # tool has already been tried) rather than removed, in case
+            # the model produces plain text again after seeing results —
+            # that case still gets one nudge before giving up.
             if not trace and no_tool_call_retries < MAX_VERIFICATION_RETRIES:
                 no_tool_call_retries += 1
                 messages.append(
@@ -321,7 +456,7 @@ def answer_with_agent(db: Session, query: str, case_id: str | None = None) -> Ag
                     }
                 )
                 continue
-            return None
+            return None, "no_tool_call_exhausted"
 
         submit_block = next((b for b in tool_use_blocks if b.name == "submit_answer"), None)
         tool_results_content: list[dict] = []
@@ -331,8 +466,10 @@ def answer_with_agent(db: Session, query: str, case_id: str | None = None) -> Ag
                 continue
             tool_iterations += 1
             if tool_iterations > MAX_TOOL_ITERATIONS:
-                return None
-            result = call_tool(db, block.name, block.input)
+                return None, "tool_iteration_limit"
+            with traced_tool(block.name, block.input) as tool_span:
+                result = call_tool(db, block.name, block.input)
+                tool_span.update(output=result)
             trace.append(ToolCallRecord(tool=block.name, arguments=block.input, result=result))
             _collect_seen_values(
                 block.name, result, chunk_lookup, fee_values, office_names, requirement_labels
@@ -347,19 +484,24 @@ def answer_with_agent(db: Session, query: str, case_id: str | None = None) -> Ag
             )
             if error is None:
                 chunk_citations = submit_block.input.get("chunk_citations") or []
-                return AgentAnswer(
-                    text=submit_block.input["answer"],
-                    citations=_build_citations(chunk_citations, chunk_lookup),
-                    cited_chunk_ids=[c["chunk_id"] for c in chunk_citations if c["chunk_id"] in chunk_lookup],
-                    trace=trace,
+                return (
+                    AgentAnswer(
+                        text=submit_block.input["answer"],
+                        citations=_build_citations(chunk_citations, chunk_lookup),
+                        cited_chunk_ids=[
+                            c["chunk_id"] for c in chunk_citations if c["chunk_id"] in chunk_lookup
+                        ],
+                        trace=trace,
+                    ),
+                    None,
                 )
             verification_retries += 1
             if verification_retries > MAX_VERIFICATION_RETRIES:
-                return None
+                return None, "verification_exhausted"
             tool_results_content.append(
                 {"type": "tool_result", "tool_use_id": submit_block.id, "content": error, "is_error": True}
             )
 
         if not tool_results_content:
-            return None
+            return None, "no_progress"
         messages.append({"role": "user", "content": tool_results_content})

@@ -133,9 +133,13 @@ def retrieve_documents(db: Session, query: str) -> dict[str, Any]:
     }
 
 
-def get_fee(db: Session, service: str, urgency: str) -> dict[str, Any]:
+def get_fee(db: Session, service: str, urgency: str, age: float | None = None) -> dict[str, Any]:
     """Wraps `app.engine.fees.resolve_fee`. `service` is "renewal" or
-    "amendment"; `urgency` is "normal" or "urgent"."""
+    "amendment"; `urgency` is "normal" or "urgent". `age`, when given,
+    selects an age-tiered fee where one exists (e.g. the renewal
+    service's below-16 rate) instead of the default adult rate —
+    without it, `resolve_fee` always returns the unconditional
+    (adult-rate) fee rule."""
     service_code = _SERVICE_CODES.get(service)
     if service_code is None:
         return {"error": f"Unknown service '{service}' — expected 'renewal' or 'amendment'."}
@@ -143,7 +147,7 @@ def get_fee(db: Session, service: str, urgency: str) -> dict[str, Any]:
         return {"error": f"Unknown urgency '{urgency}' — expected 'normal' or 'urgent'."}
 
     rule_version = _approved_rule_version(db, service_code)
-    fee = resolve_fee(db, rule_version.id, basis=urgency)
+    fee = resolve_fee(db, rule_version.id, basis=urgency, age=age)
     if fee is None:
         return {
             "found": False,
@@ -278,12 +282,19 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
     },
     {
         "name": "get_fee",
-        "description": "The computed fee for a service and urgency, with its citation.",
+        "description": (
+            "The computed fee for a service and urgency, with its citation. "
+            "Pass age when the citizen's age is known or the question is "
+            "specifically about a minor's fee — some services have a "
+            "separate, lower fee tier for applicants under 16; omitting age "
+            "returns the standard adult-rate fee."
+        ),
         "input_schema": {
             "type": "object",
             "properties": {
                 "service": {"type": "string", "enum": ["renewal", "amendment"]},
                 "urgency": {"type": "string", "enum": ["normal", "urgent"]},
+                "age": {"type": ["number", "null"]},
             },
             "required": ["service", "urgency"],
         },
@@ -344,7 +355,7 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
 
 _HANDLERS = {
     "retrieve_documents": lambda db, args: retrieve_documents(db, args["query"]),
-    "get_fee": lambda db, args: get_fee(db, args["service"], args["urgency"]),
+    "get_fee": lambda db, args: get_fee(db, args["service"], args["urgency"], args.get("age")),
     "find_office": lambda db, args: find_office(db, args.get("district"), args["urgent"]),
     "get_next_question": lambda db, args: get_next_question(db, args["case_id"]),
     "resolve_case": lambda db, args: resolve_case(db, args["case_id"]),

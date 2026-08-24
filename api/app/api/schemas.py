@@ -149,6 +149,19 @@ class CaseResolutionOut(BaseModel):
     scope_gate: ScopeGateOut | None = None
 
     @classmethod
+    def from_resolution_dict(cls, d: dict) -> "CaseResolutionOut":
+        """`app.graph.build.run_resolve_action`'s counterpart to
+        `from_resolution` — the graph's `resolve` node already
+        serializes `CaseResolution` to the same plain-dict shape these
+        fields expect (see `app.graph.nodes._resolution_dict`), so
+        Pydantic's own nested-dict validation (str -> UUID/datetime
+        coercion included) builds the response directly, no
+        `engine_types.CaseResolution` object needed."""
+        if d.get("scope_gate") is not None:
+            return cls(scope_gate=ScopeGateOut(reason=d["scope_gate"]))
+        return cls.model_validate(d)
+
+    @classmethod
     def from_resolution(cls, r: engine_types.CaseResolution) -> "CaseResolutionOut":
         if r.scope_gate is not None:
             return cls(scope_gate=ScopeGateOut(reason=r.scope_gate.reason))

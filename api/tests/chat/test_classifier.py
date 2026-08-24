@@ -5,7 +5,11 @@ approach as Phase 5's RAG tests — a mocked classifier can't tell us
 whether the actual model respects the schema and the prompt.
 """
 
+import pytest
+
 from app.chat.classifier import CONFIDENCE_THRESHOLD, classify
+
+pytestmark = pytest.mark.real_api
 
 
 def test_pure_situation_message_extracts_facts_no_question():

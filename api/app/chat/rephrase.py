@@ -7,25 +7,28 @@ has already been made, and can only affect the sentence shown, never
 which attribute it's about.
 
 Same structured-output shape as `app.chat.classifier`
-(`client.messages.parse` + a Pydantic `output_format`), on
-`claude-haiku-4-5` per the request's own "light work, on the critical
-path" choice. Two independent fallbacks to the canonical prompt: the
-model's own reported `target_attribute` not matching the actual pending
-attribute, and any call failure at all (API error, timeout, malformed
-response). Either way, the canonical prompt — never the rephrased text
-— is what `app.chat.router` persists as the case's pending-question
-reference and what test/log code compares an incoming answer against;
-see design.md's "Contextual rephrasing" decision.
+(`app.llm.gateway.structured_completion` + a Pydantic response model),
+routed to Gemini's free tier by default (`LLM_MODEL_REPHRASE` to
+override) — langgraph-orchestration-branch's cost-engineering decision:
+this is presentation-only wording, not the citizen-facing agent output,
+and it runs on every turn. Two independent fallbacks to the canonical
+prompt: the model's own reported `target_attribute` not matching the
+actual pending attribute, and any call failure at all (API error,
+timeout, rate-limited free tier, malformed response). Either way, the
+canonical prompt — never the rephrased text — is what `app.chat.router`
+persists as the case's pending-question reference and what test/log
+code compares an incoming answer against; see design.md's "Contextual
+rephrasing" decision.
 """
 
 from __future__ import annotations
 
-import anthropic
 from pydantic import BaseModel
 
 from app.chat.limits import truncate_message
+from app.llm.gateway import structured_completion
 
-MODEL = "claude-haiku-4-5"
+JOB = "rephrase"
 MAX_TOKENS = 256
 
 SYSTEM_PROMPT = """You rewrite one intake question's surface wording for \
@@ -78,17 +81,13 @@ def rephrase_question(canonical_prompt: str, attribute: str, recent_turns: list[
     """Returns the rephrased question, or `canonical_prompt` unchanged on
     an attribute mismatch or any generation failure."""
     try:
-        client = anthropic.Anthropic()
-        response = client.messages.parse(
-            model=MODEL,
-            max_tokens=MAX_TOKENS,
+        result = structured_completion(
+            JOB,
             system=SYSTEM_PROMPT,
-            messages=[
-                {"role": "user", "content": _build_prompt(canonical_prompt, attribute, recent_turns)}
-            ],
-            output_format=Rephrasing,
+            user=_build_prompt(canonical_prompt, attribute, recent_turns),
+            response_model=Rephrasing,
+            max_tokens=MAX_TOKENS,
         )
-        result = response.parsed_output
     except Exception:
         # Any API failure, timeout, or malformed response — fall back to
         # the canonical prompt, no error surfaced to the citizen.

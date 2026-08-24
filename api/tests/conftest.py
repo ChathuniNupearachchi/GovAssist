@@ -41,3 +41,20 @@ def db():
 @pytest.fixture()
 def renewal_service_id(db):
     return db.query(Service).filter(Service.code == "passport-renewal").first().id
+
+
+def pytest_terminal_summary(terminalreporter, exitstatus, config):
+    """`pytest.ini`'s `addopts = -m "not real_api"` skips every real-API
+    test by default (langgraph-orchestration-branch's "mock external API
+    calls by default" decision) — deselected items don't show up in the
+    normal pass/fail/skip counts at all, so without this the coverage gap
+    would be silent. Reports the count explicitly instead: "Report
+    skipped tests rather than hiding them, so the coverage gap stays
+    visible.\""""
+    deselected = len(getattr(terminalreporter, "stats", {}).get("deselected", []))
+    if deselected:
+        terminalreporter.write_line(
+            f"\n{deselected} real-API test(s) skipped by default (marker: real_api) - "
+            f"run `pytest -m real_api` to include them.",
+            yellow=True,
+        )

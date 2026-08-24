@@ -25,6 +25,7 @@ def test_generate_answer_requires_at_least_one_chunk():
         generate_answer([], "irrelevant")
 
 
+@pytest.mark.real_api
 def test_generated_answer_cites_from_the_retrieved_set(db):
     query = "What is the fee for a name change amendment?"
     result = retrieve(db, query)
