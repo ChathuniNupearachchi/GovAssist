@@ -825,6 +825,53 @@ isn't worth it. Reranking stays shipped-disabled behind
 decision — this remains revisitable on better hardware or a less noisy
 evaluation setup, per that decision's own framing.
 
+### Faithfulness gap — investigated via Langfuse traces, not re-measured
+
+Following up on the Open Question below (moved above it since this
+narrows, but does not fully resolve, that question): once Langfuse
+tracing (Task Group 7) was live, the 0.4939 `average_answered`
+faithfulness figure above was investigated directly against real
+traces rather than by re-running the RAGAS batch.
+
+**The 0.4939 figure is not comparable to anything measured after
+2026-08-24** — the Docker volume holding the dev database (including
+`DOCUMENT_CHUNK`, its embeddings, and every `SOURCE_DOCUMENT` row) was
+lost to a disk-full failure and rebuilt from the scraper/extraction
+cache and seed scripts that same day. The rebuilt corpus is the same
+source content re-embedded, not a different corpus, but chunk ids,
+exact chunk boundaries, and retrieval scores are not guaranteed
+identical to what produced 0.4939, so treat that number as historical
+context, not a baseline to regress against going forward.
+
+A fresh single-scenario probe (scenario 2, "What is an NMRP?", run
+against the rebuilt corpus, real trace pulled via Langfuse/ClickHouse —
+see the investigation this note summarizes) scored **0.75** faithfulness
+on an answer that was, on inspection, fully grounded: 4 of 5 claims
+paraphrase a single retrieved chunk directly, and the one claim RAGAS's
+judge flagged synthesizes a fact across *two* retrieved chunks (NMRP's
+definition in one chunk, its role in the passport-replacement
+document list in another) rather than quoting either one directly.
+
+**Working diagnosis**: RAGAS's `Faithfulness` metric decomposes an
+answer into atomic claims and checks each against the retrieved context
+in isolation. A claim that correctly connects or paraphrases facts
+spanning more than one retrieved chunk has no single chunk it matches
+word-for-word against, so the judge tends to mark it unsupported even
+though every fact it draws on is genuinely present in context — this
+reads as the metric penalizing cross-chunk synthesis specifically, not
+evidence of fabrication. This is consistent with `average_answered`
+recall being high (0.9000) while faithfulness lags (0.4939) in the
+original baseline: retrieval is finding the right material; the
+metric's atomic-claim check is what's strict, not the agent's grounding.
+
+**Not yet done, and not planned without further instruction**: repeating
+the full n=7 RAGAS batch against the rebuilt corpus to get a new,
+comparable `average_answered` figure. Explicitly deferred — the
+single-scenario probe already narrows the mechanism enough to act on,
+and a full batch (~7 paid Claude agent calls + ~28 rate-limited Gemini
+judge calls) wasn't judged worth the cost for one confirmatory data
+point when the likely explanation is already this well supported.
+
 ## Open Questions
 
 - Whether RAGAS's faithfulness gap on scenarios 4 and 7 (paid-agent
@@ -834,4 +881,9 @@ evaluation setup, per that decision's own framing.
   Task Group 3's stability tracking repeats the golden open-question
   set (an `average_answered` history the same shape as `stability_
   history.jsonl`), not yet built for RAGAS since this was the first
-  baseline run.
+  baseline run. **Narrowed above**: a single fresh trace-level
+  investigation points at atomic-claim-decomposition penalizing
+  cross-chunk synthesis, not fabrication — but this is one scenario
+  against the rebuilt corpus, not a repeated, `average_answered`-scale
+  measurement, so "genuine grounding issue vs. judge-strictness
+  artifact" is narrowed, not fully closed.

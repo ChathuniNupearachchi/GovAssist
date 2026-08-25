@@ -34,6 +34,7 @@ failed verification) filterable without re-reading every trace by hand.
 from __future__ import annotations
 
 import json
+import re
 import uuid
 from dataclasses import dataclass, field
 
@@ -253,6 +254,107 @@ def _value_appears_in_cited_chunk_text(value: float, chunk_citations: list[dict]
     return False
 
 
+# Observed directly, reproducibly, across independent runs (see
+# design.md's citation-malformation fix): on a long/structured answer,
+# the model sometimes doesn't populate the real `chunk_citations` array
+# parameter at all, and instead appends what looks like hand-typed tool-
+# call XML — `</answer>` followed by either `<chunk_citations>[...]` or
+# `<parameter name="chunk_citations">[...]` — as trailing TEXT inside the
+# free-text `answer` string field itself. The citation *content* in that
+# trailing block is typically correct (real chunk ids, real quoted
+# spans); only its placement is wrong. Anchored to the end of the string
+# (`\s*$`) since every observed instance is trailing content, not
+# mid-answer text — this must never match a legitimate citation-shaped
+# sentence appearing naturally within the prose.
+_MALFORMED_CITATION_TAG = re.compile(
+    r'(?:</answer>\s*)?<(?:chunk_citations|parameter\s+name=["\']chunk_citations["\'])>'
+    r'\s*(\[.*\])\s*(?:</(?:chunk_citations|parameter)>)?\s*$',
+    re.DOTALL,
+)
+
+# The exact wording of the generic "cited none" rejection — compared
+# against in `_run_loop` to decide whether the more specific, malformed-
+# citation-aware retry message (`_describe_citation_mistake`) applies,
+# without coupling that decision to `_verify_submission`'s internals.
+_CITED_NONE_ERROR = (
+    "You retrieved document chunks but cited none — cite every chunk "
+    "your answer actually draws on."
+)
+
+
+def _salvage_malformed_citations(submission: dict, chunk_lookup: dict[str, dict]) -> dict | None:
+    """Recovers a submission that hit the malformed-citation-placement
+    mistake described above, returning a corrected copy (citations moved
+    into `chunk_citations`, the pseudo-XML stripped from `answer`) — or
+    None if there is nothing to salvage or the extracted data can't be
+    trusted.
+
+    Safety: only ever salvages when the JSON block parses cleanly, every
+    extracted entry has both a `chunk_id` and `quoted_span`, AND every
+    extracted chunk_id is a genuine member of `chunk_lookup` — i.e.
+    something `retrieve_documents` actually returned this turn. A single
+    unrecognized id abandons the salvage entirely rather than trusting
+    part of it; the turn falls through to normal verification (and the
+    specific retry message below) exactly as it would without this
+    function. This never manufactures a citation retrieval didn't
+    actually produce — it only recovers one that did happen, misplaced
+    in transport.
+    """
+    if submission.get("chunk_citations"):
+        return None  # already has real, structured citations — nothing to salvage
+    answer_text = submission.get("answer") or ""
+    match = _MALFORMED_CITATION_TAG.search(answer_text)
+    if match is None:
+        return None
+    try:
+        parsed = json.loads(match.group(1))
+    except (json.JSONDecodeError, TypeError):
+        return None
+    if not isinstance(parsed, list) or not parsed:
+        return None
+    for entry in parsed:
+        if not isinstance(entry, dict) or "chunk_id" not in entry or "quoted_span" not in entry:
+            return None
+        if entry["chunk_id"] not in chunk_lookup:
+            return None
+
+    cleaned_answer = answer_text[: match.start()].rstrip()
+    if not cleaned_answer:
+        return None
+    salvaged = dict(submission)
+    salvaged["answer"] = cleaned_answer
+    salvaged["chunk_citations"] = parsed
+    return salvaged
+
+
+def _describe_citation_mistake(answer_text: str) -> str | None:
+    """Builds a retry message naming the actual mistake — citation JSON
+    embedded as text inside `answer` — and quoting the malformed
+    fragment, for the case `_salvage_malformed_citations` couldn't
+    recover (an unrecognized chunk_id, unparseable JSON, etc.). The
+    generic "cited none" message doesn't tell the model *why* its
+    citations weren't seen; observed directly, the retry reproduced the
+    identical malformed pattern verbatim when given only that generic
+    message — this names the mistake so the retry has a real chance of
+    fixing it instead of repeating it. Returns None when the answer text
+    doesn't match the known malformed pattern at all (a genuine "forgot
+    to cite" case), so the generic message still applies there.
+    """
+    match = _MALFORMED_CITATION_TAG.search(answer_text or "")
+    if match is None:
+        return None
+    fragment = answer_text[match.start() : match.end()]
+    return (
+        "Your previous attempt did not actually leave citations out — it placed "
+        "the citation data as literal text inside the `answer` field instead of "
+        "using the `chunk_citations` array parameter. The malformed text you "
+        f"produced was:\n\n{fragment}\n\n"
+        "Do not write citation JSON or XML-like tags inside `answer` — keep "
+        "`answer` as plain prose only. Put each cited chunk's id and "
+        "quoted_span as an object in the `chunk_citations` array parameter."
+    )
+
+
 def _verify_submission(
     submission: dict,
     chunk_lookup: dict[str, dict],
@@ -270,10 +372,7 @@ def _verify_submission(
                 "which was not returned by any retrieve_documents call this turn."
             )
     if chunk_lookup and not chunk_citations:
-        return (
-            "You retrieved document chunks but cited none — cite every chunk "
-            "your answer actually draws on."
-        )
+        return _CITED_NONE_ERROR
 
     for value in submission.get("fee_values_used") or []:
         if any(abs(float(value) - seen) < 0.01 for seen in fee_values):
@@ -479,14 +578,25 @@ def _run_loop(db: Session, query: str, case_id: str | None) -> tuple[AgentAnswer
             )
 
         if submit_block is not None:
+            # Salvage before verifying: a submission that looks like it
+            # left chunk_citations empty sometimes actually placed real
+            # citation data as malformed text inside `answer` instead
+            # (see `_salvage_malformed_citations`) — recover that first,
+            # so verification below runs against the corrected
+            # citations/answer exactly as it would if the model had
+            # populated the field correctly in the first place.
+            submission = _salvage_malformed_citations(submit_block.input, chunk_lookup)
+            if submission is None:
+                submission = submit_block.input
+
             error = _verify_submission(
-                submit_block.input, chunk_lookup, fee_values, office_names, requirement_labels
+                submission, chunk_lookup, fee_values, office_names, requirement_labels
             )
             if error is None:
-                chunk_citations = submit_block.input.get("chunk_citations") or []
+                chunk_citations = submission.get("chunk_citations") or []
                 return (
                     AgentAnswer(
-                        text=submit_block.input["answer"],
+                        text=submission["answer"],
                         citations=_build_citations(chunk_citations, chunk_lookup),
                         cited_chunk_ids=[
                             c["chunk_id"] for c in chunk_citations if c["chunk_id"] in chunk_lookup
@@ -498,6 +608,15 @@ def _run_loop(db: Session, query: str, case_id: str | None) -> tuple[AgentAnswer
             verification_retries += 1
             if verification_retries > MAX_VERIFICATION_RETRIES:
                 return None, "verification_exhausted"
+            if error == _CITED_NONE_ERROR:
+                # Salvage couldn't recover this one (bad JSON, an
+                # unrecognized chunk_id, etc.) — if it's still the known
+                # malformed-citation pattern, tell the model exactly what
+                # it did wrong instead of the generic message, which the
+                # retry has already been observed to reproduce verbatim.
+                specific = _describe_citation_mistake(submission.get("answer", ""))
+                if specific is not None:
+                    error = specific
             tool_results_content.append(
                 {"type": "tool_result", "tool_use_id": submit_block.id, "content": error, "is_error": True}
             )

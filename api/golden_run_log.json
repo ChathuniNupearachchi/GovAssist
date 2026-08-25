@@ -1,0 +1,242 @@
+[
+  {
+    "rep": 0,
+    "name": "1. Lost-passport-abroad, phrased far from source wording",
+    "query": "My passport got stolen while I was traveling in another country \u2014 what do I need to sort out before I can travel back to Sri Lanka?",
+    "expect_grounded": true,
+    "refused": true,
+    "answer": null,
+    "t_start": "2026-08-25T06:17:26.002445+00:00",
+    "t_end": "2026-08-25T06:18:16.690840+00:00"
+  },
+  {
+    "rep": 0,
+    "name": "2. Exact identifier \u2014 NMRP",
+    "query": "What is an NMRP?",
+    "expect_grounded": true,
+    "refused": false,
+    "answer": "An **NMRP** stands for **Non-Machine Readable Passport**. According to the Department of Immigration & Emigration:\n\n- It (along with a **Temporary Travel Document**) is issued to Sri Lankans whose passports have been **lost, stolen, or expired while they were in a foreign country**.\n- You can obtain it from an **Overseas Sri Lankan Mission** (i.e., a Sri Lankan embassy/consulate abroad).\n- It's meant for situations where you intend to **return to Sri Lanka within a short period of time**.\n- Its validity period is limited \u2014 an NMRP (or Temporary Travel Document) is valid **only for one-way travel to Sri Lanka**.\n\nIt also comes up later in the passport replacement process: if your regular passport was lost while you were abroad, you'd typically need to submit the NMRP (the temporary travel document you used to return to Sri Lanka), along with a photocopy of it, when applying for a replacement passport.",
+    "t_start": "2026-08-25T06:18:16.690840+00:00",
+    "t_end": "2026-08-25T06:18:31.866280+00:00"
+  },
+  {
+    "rep": 0,
+    "name": "3. Exact identifier \u2014 a circular number",
+    "query": "What is circular DIE/OM/CIR/2017/01 about?",
+    "expect_grounded": true,
+    "refused": false,
+    "answer": "Circular DIE/OM/CIR/2017/01 is referenced by the Department of Immigration & Emigration as the \"Relevant Circular for finger prints\" \u2014 i.e., it governs the fingerprint-related requirements/procedures for passport applications. The website only cites this circular by name and topic (fingerprints) alongside contact details for the relevant division; it does not reproduce the full text of the circular, so I can't give you further detail on its specific provisions beyond that it relates to fingerprint requirements.",
+    "t_start": "2026-08-25T06:18:31.866280+00:00",
+    "t_end": "2026-08-25T06:18:42.777549+00:00"
+  },
+  {
+    "rep": 0,
+    "name": "4. Age-tiered fee \u2014 a real system gap risk, not a guess",
+    "query": "How much does an urgent passport renewal cost for a 10-year-old?",
+    "expect_grounded": true,
+    "refused": false,
+    "answer": "For a 10-year-old (i.e., an applicant under 16), an urgent passport renewal costs Rs. 9,000.",
+    "t_start": "2026-08-25T06:18:42.777549+00:00",
+    "t_end": "2026-08-25T06:18:48.753155+00:00"
+  },
+  {
+    "rep": 0,
+    "name": "5. Alteration fee \u2014 exact amount, paraphrased",
+    "query": "How much does it cost to add my profession to my passport?",
+    "expect_grounded": true,
+    "refused": false,
+    "answer": "Adding your profession to your passport counts as an \"amendment\" service. The fee for this is LKR 1,200 at the normal processing rate. There isn't a separate urgent/express fee option for amendments \u2014 only the standard rate applies.",
+    "t_start": "2026-08-25T06:18:48.753155+00:00",
+    "t_end": "2026-08-25T06:18:59.645700+00:00"
+  },
+  {
+    "rep": 0,
+    "name": "6. Multi-tool comparison \u2014 both fees required",
+    "query": "Should I amend my passport or apply for a new one, and how much will each cost?",
+    "expect_grounded": true,
+    "refused": true,
+    "answer": null,
+    "t_start": "2026-08-25T06:18:59.645700+00:00",
+    "t_end": "2026-08-25T06:19:29.175496+00:00"
+  },
+  {
+    "rep": 0,
+    "name": "7. Multi-tool \u2014 fee, office, and the urgent conflict note",
+    "query": "I need an urgent passport and I live in Kandy \u2014 what will it cost, and which office do I go to?",
+    "expect_grounded": true,
+    "refused": false,
+    "answer": "For an urgent passport (renewal) application, the fee is LKR 20,000.\n\nRegarding the office: there's a documented conflict about where urgent applications are accepted for a district like Kandy. One section of the official source states that one-day (urgent) service is \"only available at\" the Head Office, but another section of the same source lists urgent-service working hours for Regional Offices including Kandy (as well as Matara, Vavuniya, Kurunegala, and Jaffna). A separate source page makes no location distinction for urgent service at all.\n\nSo the possible offices are: Head Office, Kandy Regional Office, or Overseas Sri Lankan Missions (if applying from abroad) \u2014 but because of this conflict, please confirm directly with the Kandy Regional Office or Head Office before traveling, to be sure urgent service is currently being accepted at the Kandy Regional Office.",
+    "t_start": "2026-08-25T06:19:29.175496+00:00",
+    "t_end": "2026-08-25T06:19:48.035743+00:00"
+  },
+  {
+    "rep": 0,
+    "name": "8. Near-miss out-of-corpus \u2014 driving license, adjacent to a real office",
+    "query": "Can I renew my driving license at the passport office in Kandy?",
+    "expect_grounded": false,
+    "refused": true,
+    "answer": null,
+    "t_start": "2026-08-25T06:19:48.035743+00:00",
+    "t_end": "2026-08-25T06:19:55.558933+00:00"
+  },
+  {
+    "rep": 0,
+    "name": "9. Near-miss out-of-corpus \u2014 adjacent to a real topic (dual citizenship)",
+    "query": "What are the passport rules for a Sri Lankan citizen who also holds Indian citizenship, applying from India?",
+    "expect_grounded": null,
+    "refused": true,
+    "answer": null,
+    "t_start": "2026-08-25T06:19:55.558933+00:00",
+    "t_end": "2026-08-25T06:20:40.756745+00:00"
+  },
+  {
+    "rep": 0,
+    "name": "10. Explicit out-of-scope refusal \u2014 online submission",
+    "query": "How do I log into the online passport application portal?",
+    "expect_grounded": false,
+    "refused": true,
+    "answer": null,
+    "t_start": "2026-08-25T06:20:40.756745+00:00",
+    "t_end": "2026-08-25T06:20:46.339831+00:00"
+  },
+  {
+    "rep": 1,
+    "name": "1. Lost-passport-abroad, phrased far from source wording",
+    "query": "My passport got stolen while I was traveling in another country \u2014 what do I need to sort out before I can travel back to Sri Lanka?",
+    "expect_grounded": true,
+    "refused": true,
+    "answer": null,
+    "t_start": "2026-08-25T06:20:46.339831+00:00",
+    "t_end": "2026-08-25T06:21:17.392823+00:00"
+  },
+  {
+    "rep": 1,
+    "name": "2. Exact identifier \u2014 NMRP",
+    "query": "What is an NMRP?",
+    "expect_grounded": true,
+    "refused": false,
+    "answer": "NMRP stands for \"Non-Machine Readable Passport.\" It's a type of document (along with Temporary Travel Documents) issued by Overseas Sri Lankan Missions to Sri Lankan citizens whose passports have been lost, stolen, or have expired while they are in a foreign country. You would apply for one if you intend to return to Sri Lanka within a short period of time. An NMRP (or Temporary Travel Document) is valid only for one-way travel to Sri Lanka \u2014 it's not a full replacement passport, just enough to get you home. Once back in Sri Lanka, you would then need to apply through the Department of Immigration & Emigration for a regular passport.",
+    "t_start": "2026-08-25T06:21:17.392823+00:00",
+    "t_end": "2026-08-25T06:21:29.303450+00:00"
+  },
+  {
+    "rep": 1,
+    "name": "3. Exact identifier \u2014 a circular number",
+    "query": "What is circular DIE/OM/CIR/2017/01 about?",
+    "expect_grounded": true,
+    "refused": false,
+    "answer": "Circular DIE/OM/CIR/2017/01 is listed by the Department of Immigration & Emigration as the \"Relevant Circular for finger prints\" \u2014 meaning it governs the fingerprint requirement/procedure for passport applications. The source page doesn't give further detail beyond identifying it as the applicable circular for that requirement.",
+    "t_start": "2026-08-25T06:21:29.303450+00:00",
+    "t_end": "2026-08-25T06:21:39.507153+00:00"
+  },
+  {
+    "rep": 1,
+    "name": "4. Age-tiered fee \u2014 a real system gap risk, not a guess",
+    "query": "How much does an urgent passport renewal cost for a 10-year-old?",
+    "expect_grounded": true,
+    "refused": false,
+    "answer": "For a child aged 10 (under 16), an urgent passport renewal costs LKR 9,000.",
+    "t_start": "2026-08-25T06:21:39.507153+00:00",
+    "t_end": "2026-08-25T06:21:45.831114+00:00"
+  },
+  {
+    "rep": 1,
+    "name": "5. Alteration fee \u2014 exact amount, paraphrased",
+    "query": "How much does it cost to add my profession to my passport?",
+    "expect_grounded": true,
+    "refused": false,
+    "answer": "Adding your profession to your passport falls under an \"amendment\" service. For normal (non-urgent) processing, the fee is LKR 1,200. If you need urgent processing, the fee is different \u2014 let me know if you'd like that quoted as well.",
+    "t_start": "2026-08-25T06:21:45.831114+00:00",
+    "t_end": "2026-08-25T06:21:53.978478+00:00"
+  },
+  {
+    "rep": 1,
+    "name": "6. Multi-tool comparison \u2014 both fees required",
+    "query": "Should I amend my passport or apply for a new one, and how much will each cost?",
+    "expect_grounded": true,
+    "refused": true,
+    "answer": null,
+    "t_start": "2026-08-25T06:21:53.978478+00:00",
+    "t_end": "2026-08-25T06:22:34.610941+00:00"
+  },
+  {
+    "rep": 1,
+    "name": "7. Multi-tool \u2014 fee, office, and the urgent conflict note",
+    "query": "I need an urgent passport and I live in Kandy \u2014 what will it cost, and which office do I go to?",
+    "expect_grounded": true,
+    "refused": false,
+    "answer": "For an urgent (one-day) passport application:\n\n**Fee:** Rs. 20,000 (the urgent service fee).\n\n**Office:** There's some conflicting guidance in the official sources about where urgent applications from Kandy can be submitted:\n- One part of the rules states urgent/one-day service is \"only available at\" the Head Office.\n- Another part (the working-hours section) lists \"Application for One day Service \u2013 7.30am onwards on weekdays\" as being offered at Regional Offices including Kandy, Matara, Vavuniya, Kurunegala and Jaffna.\n- The fee schedule itself makes no location distinction for urgent service.\n\nBecause of this conflict, I'd recommend confirming directly with the Kandy Regional Office whether they are currently accepting urgent applications before you travel there. If you want to be certain, the Head Office is unambiguously confirmed to accept urgent applications.",
+    "t_start": "2026-08-25T06:22:34.610941+00:00",
+    "t_end": "2026-08-25T06:22:55.360475+00:00"
+  },
+  {
+    "rep": 2,
+    "name": "1. Lost-passport-abroad, phrased far from source wording",
+    "query": "My passport got stolen while I was traveling in another country \u2014 what do I need to sort out before I can travel back to Sri Lanka?",
+    "expect_grounded": true,
+    "refused": true,
+    "answer": null,
+    "t_start": "2026-08-25T06:22:55.360475+00:00",
+    "t_end": "2026-08-25T06:23:27.921916+00:00"
+  },
+  {
+    "rep": 2,
+    "name": "2. Exact identifier \u2014 NMRP",
+    "query": "What is an NMRP?",
+    "expect_grounded": true,
+    "refused": false,
+    "answer": "An NMRP stands for \"Non-Machine Readable Passport.\" Along with Temporary Travel Documents, it is a document issued to Sri Lankans whose passports have been lost, stolen, or have expired while they are in a foreign country.\n\nKey points:\n- Where to obtain it: You can get an NMRP from an Overseas Sri Lankan Mission (i.e., abroad, not in Sri Lanka).\n- When to apply: If you intend to return to Sri Lanka within a short period of time, you may apply for an NMRP or a Temporary Travel Document instead of a full passport.\n- Validity: An NMRP is valid only for one-way travel to Sri Lanka \u2014 it cannot be used for onward travel.\n\nAlso worth noting: if your passport was lost while abroad, when you later apply for a replacement passport in Sri Lanka you will need to submit the NMRP (with a photocopy) that you used to travel back, as part of the required documentation for a lost-passport application.",
+    "t_start": "2026-08-25T06:23:27.921916+00:00",
+    "t_end": "2026-08-25T06:23:43.100896+00:00"
+  },
+  {
+    "rep": 2,
+    "name": "3. Exact identifier \u2014 a circular number",
+    "query": "What is circular DIE/OM/CIR/2017/01 about?",
+    "expect_grounded": true,
+    "refused": false,
+    "answer": "Circular DIE/OM/CIR/2017/01 is the circular referenced by the Department of Immigration & Emigration as the relevant one governing **finger prints** for passport applications. It's listed on the Department's site alongside other circulars (such as those covering fees for applications logged at Sri Lankan Missions Abroad). Beyond identifying it as the fingerprint-related circular, the source material doesn't provide further details on its specific contents.",
+    "t_start": "2026-08-25T06:23:43.100896+00:00",
+    "t_end": "2026-08-25T06:23:56.889835+00:00"
+  },
+  {
+    "rep": 2,
+    "name": "4. Age-tiered fee \u2014 a real system gap risk, not a guess",
+    "query": "How much does an urgent passport renewal cost for a 10-year-old?",
+    "expect_grounded": true,
+    "refused": false,
+    "answer": "For a child aged 10, an urgent passport renewal costs LKR 9,000 (this is the reduced under-16 urgent fee tier).",
+    "t_start": "2026-08-25T06:23:56.889835+00:00",
+    "t_end": "2026-08-25T06:24:02.713517+00:00"
+  },
+  {
+    "rep": 2,
+    "name": "5. Alteration fee \u2014 exact amount, paraphrased",
+    "query": "How much does it cost to add my profession to my passport?",
+    "expect_grounded": true,
+    "refused": false,
+    "answer": "Adding your profession to your existing passport counts as an \"amendment\" service. For normal (non-urgent) processing, the fee is LKR 1,200. If you need urgent processing, the fee is higher \u2014 just ask if you'd like that figure too.",
+    "t_start": "2026-08-25T06:24:02.713517+00:00",
+    "t_end": "2026-08-25T06:24:11.281528+00:00"
+  },
+  {
+    "rep": 2,
+    "name": "6. Multi-tool comparison \u2014 both fees required",
+    "query": "Should I amend my passport or apply for a new one, and how much will each cost?",
+    "expect_grounded": true,
+    "refused": true,
+    "answer": null,
+    "t_start": "2026-08-25T06:24:11.281528+00:00",
+    "t_end": "2026-08-25T06:24:45.527572+00:00"
+  },
+  {
+    "rep": 2,
+    "name": "7. Multi-tool \u2014 fee, office, and the urgent conflict note",
+    "query": "I need an urgent passport and I live in Kandy \u2014 what will it cost, and which office do I go to?",
+    "expect_grounded": true,
+    "refused": false,
+    "answer": "Here's what I found for an urgent passport application in Kandy:\n\n**Fee:** The urgent (one-day) service fee for a passport renewal/new passport is LKR 20,000.\n\n**Office:** For your district, the offices on record are:\n- Head Office\n- Kandy Regional Office\n- Overseas Sri Lankan Missions (if applying from abroad)\n\nImportant caveat: There's a conflict in the official guidance about where urgent service is actually available. One section of the source page states that one-day (urgent) service is \"only available at\" the Head Office, while the same page's working-hours section separately lists one-day service hours for Regional Offices including Kandy, Matara, Vavuniya, Kurunegala and Jaffna. A different source page draws no location distinction for urgent service at all. Given this inconsistency, I'd recommend confirming directly with the Kandy Regional Office (or the Head Office) before traveling, to avoid a wasted trip if only the Head Office turns out to accept urgent applications.</answer>\n<parameter name=\"chunk_citations\">[{\"chunk_id\": \"8d2022f6-1506-4931-b687-a7feaaba52c3\", \"quoted_span\": \"20000.0\"}, {\"chunk_id\": \"95aa4b12-8835-4b43-a050-f58dfa92dfd8\", \"quoted_span\": \"one-day (urgent) service is \\\"only available at\\\" the Head Office, but the same page's working-hours section lists \\\"Application for One day Service \\u2013 7.30am onwards on weekdays\\\" for the Regional Offices at Kandy, Matara, Vavuniya, Kurunegala and Jaffna too. pages_e.php?id=8 draws no location distinction for urgent service at all.\"}]",
+    "t_start": "2026-08-25T06:24:45.527572+00:00",
+    "t_end": "2026-08-25T06:25:01.634640+00:00"
+  }
+]
