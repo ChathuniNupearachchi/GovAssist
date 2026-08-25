@@ -36,23 +36,6 @@ from app.models import (
     SourceDocument,
 )
 
-# Common secular occupations, used to skip the buddhist_priest question
-# once a citizen has already stated one — see the QUESTION_CONDITION
-# linked to the buddhist_priest Question below. An exact-match `in`
-# condition against free text is a heuristic, not true understanding:
-# it only fires when the citizen's stated profession happens to match
-# this list's casing/wording exactly (the classifier records whatever
-# casing the citizen's own words implied — see design.md's note on this
-# limitation). Unmatched or unanswered professions still fall through to
-# asking buddhist_priest, which is the safe direction to fail in.
-SECULAR_PROFESSIONS = [
-    "Doctor", "Teacher", "Engineer", "Nurse", "Accountant", "Lawyer",
-    "Businessman", "Business", "Driver", "Farmer", "Student", "Clerk",
-    "Officer", "Manager", "Government Officer", "Private Sector Employee",
-    "Housewife", "Retired", "Unemployed", "Police Officer", "Soldier",
-    "Banker", "Shop Owner", "Architect", "Pharmacist", "Dentist",
-]
-
 RENEWAL_CODE = "passport-renewal"
 AMENDMENT_CODE = "passport-amendment"
 CONFLICT_NOTE_CODE = "urgent_office_conflict"
@@ -254,22 +237,36 @@ def seed(db: Session) -> None:
     # operator — see design.md's Condition.attribute decision.
     cond_profession_empty = make_condition("profession", "equals", "")
     cond_buddhist_priest = make_condition("buddhist_priest", "equals", "true")
-    cond_profession_secular = make_condition(
-        "profession", "in", ",".join(SECULAR_PROFESSIONS)
-    )
 
     # -- Question relevance (data-driven, not a code special-case) --------
-    # buddhist_priest is skipped once profession clearly names a secular
-    # occupation — asking someone who just said "I'm a doctor" whether
-    # they're a Buddhist priest reads as not listening. This is the same
-    # flat, all-linked-conditions-pass, optionally-negated shape
-    # REQUIREMENT_CONDITION already uses, applied to a QUESTION instead —
-    # see QuestionCondition's docstring in models.py.
+    # buddhist_priest carries NO suppressing condition — it is asked of
+    # every applicant unconditionally, regardless of profession (bug fix
+    # — manual QA bug #6). It previously used to be skipped once
+    # profession named a secular occupation, but monks in Sri Lanka
+    # commonly also hold one (teacher, scholar, lecturer); suppressing
+    # the question on that basis silently excluded a monk who answered
+    # e.g. "teacher" from the Samanera/Higher Ordination certificate
+    # requirement, which is mandatory for priests regardless of any other
+    # occupation. Question ORDER also changed to ask buddhist_priest
+    # before profession (see RENEWAL_QUESTIONS) so this can never again
+    # be implemented as "skip based on the profession just given."
+    #
+    # profession itself IS gated — on age, not on any other answer (bug
+    # fix — manual QA bug #5): reuses cond_age_lt_16 negated, so it's
+    # relevant only once the applicant is known to be 16 or older
+    # (mirrors the fingerprint requirement's own use of this same
+    # condition). This is close to redundant with the scope gate (bug
+    # fix #2) — a true under-16 case is refused immediately after age is
+    # recorded and never reaches this question via the normal chat flow
+    # — but is kept as an explicit, defense-in-depth gate on the
+    # question's own relevance data, not solely on that separate
+    # code-level short-circuit (e.g. GET /case/{id}/next-question calls
+    # `next_question` directly and has no scope-gate check of its own).
     db.add(
         QuestionCondition(
-            question_id=questions["buddhist_priest"].id,
-            condition_id=cond_profession_secular.id,
-            negated=True,  # relevant unless profession is IN the secular list
+            question_id=questions["profession"].id,
+            condition_id=cond_age_lt_16.id,
+            negated=True,  # relevant unless age < 16
         )
     )
 

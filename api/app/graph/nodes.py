@@ -15,11 +15,11 @@ from langchain_core.runnables import RunnableConfig
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.chat.deterministic import try_deterministic_match
+from app.chat.deterministic import is_greeting, try_deterministic_match
 from app.chat.classifier import classify as _classify
 from app.engine.next_question import next_question as _next_question
 from app.engine.renewal_intake import ATTRIBUTE_BY_PROMPT, RENEWAL_QUESTIONS
-from app.engine.resolver import resolve_case as _resolve_case
+from app.engine.resolver import SCOPE_GATE_UNDER_16, resolve_case as _resolve_case
 from app.engine.types import (
     AmendmentAlternative,
     CaseResolution,
@@ -36,6 +36,20 @@ from app.observability.tracing import traced_node
 _PROMPT_BY_ATTRIBUTE: dict[str, str] = {
     attribute: prompt for attribute, prompt, _, _, _ in RENEWAL_QUESTIONS
 }
+
+# Bug fix (manual QA bug #3): short, plain-language, no jargon — states
+# what GovAssist does and what to try next, without asking anything or
+# starting intake itself. Kept short deliberately (CLAUDE.md's "generous
+# spacing... outdoors on a phone" audience).
+GREETING_ORIENTATION_MESSAGE = (
+    "Hi! GovAssist helps you figure out exactly what you need for a Sri "
+    "Lankan passport — renewal, amendment, and related questions.\n\n"
+    "You can:\n"
+    "- Tell me your situation (e.g. \"my passport expired last year\") "
+    "and I'll ask a few quick questions to build your document checklist.\n"
+    "- Ask a specific question (e.g. \"how much does a passport cost?\").\n\n"
+    "What would you like to do?"
+)
 
 
 def _get_db(config: RunnableConfig) -> Session:
@@ -95,6 +109,7 @@ def _offices_dict(offices: OfficeResolution | None) -> dict[str, Any] | None:
         return None
     return {
         "offices": [{"id": str(o.id), "name": o.name, "type": o.type} for o in offices.offices],
+        "district_mapping_caveat": offices.district_mapping_caveat,
         "conflict_note": (
             {
                 "note_text": offices.conflict_note.note_text,
@@ -150,11 +165,25 @@ def classify_node(state: GraphState, config: RunnableConfig) -> dict[str, Any]:
     pending_attribute = ATTRIBUTE_BY_PROMPT.get(pending.prompt) if pending is not None else None
 
     message = state["message"]
+    base = {"answers_before": answers_before, "pending_attribute": pending_attribute}
+
+    if is_greeting(message):
+        # Checked before the deterministic pending-question match too —
+        # "help" while `profession` is pending would otherwise be
+        # accepted as the literal profession text (profession always
+        # accepts free text), which is exactly the wrong read of it.
+        return {
+            **base,
+            "extracted": {},
+            "intent": "greeting",
+            "contains_question": False,
+            "should_answer_via_rag": False,
+            "greeting_message": GREETING_ORIENTATION_MESSAGE,
+        }
+
     deterministic_value = None
     if pending_attribute is not None:
         deterministic_value = try_deterministic_match(pending_attribute, message)
-
-    base = {"answers_before": answers_before, "pending_attribute": pending_attribute}
 
     if deterministic_value is not None:
         return {
@@ -240,7 +269,26 @@ def next_question_node(state: GraphState, config: RunnableConfig) -> dict[str, A
             "next_pending_question_prompt": pending.prompt if pending is not None else None,
         }
 
+    if state.get("intent") == "greeting":
+        # A greeting doesn't start or continue intake (bug fix — manual
+        # QA bug #3) — no question is offered this turn, regardless of
+        # whether one was already pending.
+        return {"next_pending_question_id": None, "next_pending_question_prompt": None}
+
     answers_after = state.get("answers_after") or state.get("answers_before", {})
+    # Bug fix: the scope gate used to only fire on the explicit resolve
+    # action, so a message-turn intake kept asking further questions
+    # (name_changed, dual_citizen, ...) for an under-16 case for as long
+    # as the citizen kept answering, only refusing once resolve was
+    # finally called. Check it here too, immediately once age<16 is
+    # recorded — the very next response is the scope-gate message, not
+    # another question.
+    if _is_under_16(answers_after):
+        return {
+            "next_pending_question_id": None,
+            "next_pending_question_prompt": None,
+            "scope_gate_message": SCOPE_GATE_UNDER_16,
+        }
     pending = _next_question(db, case.service_id, answers_after)
     return {
         "next_pending_question_id": str(pending.id) if pending is not None else None,

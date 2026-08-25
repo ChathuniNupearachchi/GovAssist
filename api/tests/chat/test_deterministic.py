@@ -35,7 +35,16 @@ def test_service_basis_synonyms_match():
 
 def test_profession_always_accepts_free_text():
     assert try_deterministic_match("profession", "Software Engineer") == "Software Engineer"
-    assert try_deterministic_match("profession", "") is None
+
+
+def test_blank_profession_records_as_no_profession():
+    """Bug fix (manual QA bug #4): the prompt says "leave blank if you
+    don't have one" — a blank or whitespace-only message must record as
+    "" (no profession), the same convention golden-scenario fixtures
+    already use, not fall through to the classifier and effectively be
+    dropped."""
+    assert try_deterministic_match("profession", "") == ""
+    assert try_deterministic_match("profession", "   ") == ""
 
 
 def test_message_with_surrounding_prose_does_not_match():

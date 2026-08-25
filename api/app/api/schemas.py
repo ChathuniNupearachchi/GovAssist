@@ -110,6 +110,10 @@ class ConflictNoteOut(BaseModel):
 class OfficeResolutionOut(BaseModel):
     offices: list[OfficeOut]
     conflict_note: ConflictNoteOut | None
+    # Set whenever a district narrowed the regional office list — the
+    # Phase 2 district-to-office mapping is an unverified geographic
+    # placeholder (see app.engine.offices), never asserted as "nearest."
+    district_mapping_caveat: str | None = None
 
     @classmethod
     def from_resolved(cls, r: engine_types.OfficeResolution) -> "OfficeResolutionOut":
@@ -120,6 +124,7 @@ class OfficeResolutionOut(BaseModel):
                 if r.conflict_note is not None
                 else None
             ),
+            district_mapping_caveat=r.district_mapping_caveat,
         )
 
 

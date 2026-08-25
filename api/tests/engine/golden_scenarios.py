@@ -79,7 +79,7 @@ GOLDEN_SCENARIOS = [
         "answers": {**BASE, "age": "30", "district": "Colombo"},
         "expected_labels": STANDARD_CORE | {CURRENT_PASSPORT_LABEL},
         "expected_fee": 10000.00,
-        "expected_offices": {"Head Office", "Kurunegala Regional Office", "Overseas Sri Lankan Missions"},
+        "expected_offices": {"Head Office"},
         "expect_conflict_note": False,
         "expect_amendment_alternative": False,
         "expect_scope_gate": False,
@@ -89,7 +89,7 @@ GOLDEN_SCENARIOS = [
         "answers": {**BASE, "age": "30", "district": "Colombo", "service_basis": "urgent"},
         "expected_labels": STANDARD_CORE | {CURRENT_PASSPORT_LABEL},
         "expected_fee": 20000.00,
-        "expected_offices": {"Head Office", "Kurunegala Regional Office", "Overseas Sri Lankan Missions"},
+        "expected_offices": {"Head Office"},
         "expect_conflict_note": True,
         "expect_amendment_alternative": False,
         "expect_scope_gate": False,
@@ -99,7 +99,7 @@ GOLDEN_SCENARIOS = [
         "answers": {**BASE, "age": "30", "district": "Colombo", "name_changed": "true"},
         "expected_labels": STANDARD_CORE | {CURRENT_PASSPORT_LABEL, MARRIAGE_CERT_LABEL},
         "expected_fee": 10000.00,
-        "expected_offices": {"Head Office", "Kurunegala Regional Office", "Overseas Sri Lankan Missions"},
+        "expected_offices": {"Head Office"},
         "expect_conflict_note": False,
         "expect_amendment_alternative": True,
         "expect_scope_gate": False,
@@ -109,7 +109,7 @@ GOLDEN_SCENARIOS = [
         "answers": {**BASE, "age": "40", "district": "Matara", "holds_passport": "false"},
         "expected_labels": STANDARD_CORE,
         "expected_fee": 10000.00,
-        "expected_offices": {"Head Office", "Matara Regional Office", "Overseas Sri Lankan Missions"},
+        "expected_offices": {"Head Office", "Matara Regional Office"},
         "expect_conflict_note": False,
         "expect_amendment_alternative": False,
         "expect_scope_gate": False,
@@ -119,7 +119,7 @@ GOLDEN_SCENARIOS = [
         "answers": {**BASE, "age": "30", "district": "Kandy"},
         "expected_labels": STANDARD_CORE | {CURRENT_PASSPORT_LABEL},
         "expected_fee": 10000.00,
-        "expected_offices": {"Head Office", "Kandy Regional Office", "Overseas Sri Lankan Missions"},
+        "expected_offices": {"Head Office", "Kandy Regional Office"},
         "expect_conflict_note": False,
         "expect_amendment_alternative": False,
         "expect_scope_gate": False,
@@ -129,7 +129,7 @@ GOLDEN_SCENARIOS = [
         "answers": {**BASE, "age": "30", "district": "Colombo", "dual_citizen": "true"},
         "expected_labels": DUAL_CITIZEN_SET,
         "expected_fee": 10000.00,
-        "expected_offices": {"Head Office", "Kurunegala Regional Office", "Overseas Sri Lankan Missions"},
+        "expected_offices": {"Head Office"},
         "expect_conflict_note": False,
         "expect_amendment_alternative": False,
         "expect_scope_gate": False,
@@ -139,7 +139,7 @@ GOLDEN_SCENARIOS = [
         "answers": {**BASE, "age": "30", "district": "Colombo", "buddhist_priest": "true"},
         "expected_labels": STANDARD_CORE | {CURRENT_PASSPORT_LABEL, SAMANERA_LABEL},
         "expected_fee": 10000.00,
-        "expected_offices": {"Head Office", "Kurunegala Regional Office", "Overseas Sri Lankan Missions"},
+        "expected_offices": {"Head Office"},
         "expect_conflict_note": False,
         "expect_amendment_alternative": False,
         "expect_scope_gate": False,
@@ -149,7 +149,7 @@ GOLDEN_SCENARIOS = [
         "answers": {**BASE, "age": "35", "district": "Jaffna", "holds_passport": "false"},
         "expected_labels": STANDARD_CORE,
         "expected_fee": 10000.00,
-        "expected_offices": {"Head Office", "Jaffna Regional Office", "Overseas Sri Lankan Missions"},
+        "expected_offices": {"Head Office", "Jaffna Regional Office"},
         "expect_conflict_note": False,
         "expect_amendment_alternative": False,
         "expect_scope_gate": False,
@@ -176,7 +176,7 @@ GOLDEN_SCENARIOS = [
         },
         "expected_labels": STANDARD_CORE | {CURRENT_PASSPORT_LABEL, MARRIAGE_CERT_LABEL},
         "expected_fee": 20000.00,
-        "expected_offices": {"Head Office", "Kandy Regional Office", "Overseas Sri Lankan Missions"},
+        "expected_offices": {"Head Office", "Kandy Regional Office"},
         "expect_conflict_note": True,
         "expect_amendment_alternative": True,
         "expect_scope_gate": False,
@@ -207,7 +207,7 @@ GOLDEN_SCENARIOS = [
         "answers": {**BASE, "age": "16", "district": "Colombo"},
         "expected_labels": STANDARD_CORE | {CURRENT_PASSPORT_LABEL},
         "expected_fee": 10000.00,
-        "expected_offices": {"Head Office", "Kurunegala Regional Office", "Overseas Sri Lankan Missions"},
+        "expected_offices": {"Head Office"},
         "expect_conflict_note": False,
         "expect_amendment_alternative": False,
         "expect_scope_gate": False,
@@ -217,7 +217,7 @@ GOLDEN_SCENARIOS = [
         "answers": {**BASE, "age": "60", "district": "Colombo"},
         "expected_labels": STANDARD_CORE | {CURRENT_PASSPORT_LABEL},
         "expected_fee": 10000.00,
-        "expected_offices": {"Head Office", "Kurunegala Regional Office", "Overseas Sri Lankan Missions"},
+        "expected_offices": {"Head Office"},
         "expect_conflict_note": False,
         "expect_amendment_alternative": False,
         "expect_scope_gate": False,
@@ -227,7 +227,7 @@ GOLDEN_SCENARIOS = [
         "answers": {**BASE, "age": "61", "district": "Colombo"},
         "expected_labels": (STANDARD_CORE | {CURRENT_PASSPORT_LABEL}) - {FINGERPRINTS_LABEL},
         "expected_fee": 10000.00,
-        "expected_offices": {"Head Office", "Kurunegala Regional Office", "Overseas Sri Lankan Missions"},
+        "expected_offices": {"Head Office"},
         "expect_conflict_note": False,
         "expect_amendment_alternative": False,
         "expect_scope_gate": False,
@@ -240,7 +240,7 @@ GOLDEN_SCENARIOS = [
         },
         "expected_labels": DUAL_CITIZEN_SET | {NEW_NIC_LABEL},
         "expected_fee": 10000.00,
-        "expected_offices": {"Head Office", "Kurunegala Regional Office", "Overseas Sri Lankan Missions"},
+        "expected_offices": {"Head Office"},
         "expect_conflict_note": False,
         "expect_amendment_alternative": False,
         "expect_scope_gate": False,
@@ -254,7 +254,7 @@ GOLDEN_SCENARIOS = [
         # incorrectly) would fail this by including NEW_NIC_LABEL here.
         "expected_labels": STANDARD_CORE | {CURRENT_PASSPORT_LABEL},
         "expected_fee": 10000.00,
-        "expected_offices": {"Head Office", "Kurunegala Regional Office", "Overseas Sri Lankan Missions"},
+        "expected_offices": {"Head Office"},
         "expect_conflict_note": False,
         "expect_amendment_alternative": False,
         "expect_scope_gate": False,
@@ -264,7 +264,7 @@ GOLDEN_SCENARIOS = [
         "answers": {**BASE, "age": "30", "district": "Colombo", "profession": "Doctor"},
         "expected_labels": STANDARD_CORE | {CURRENT_PASSPORT_LABEL, EDUCATIONAL_CERT_LABEL},
         "expected_fee": 10000.00,
-        "expected_offices": {"Head Office", "Kurunegala Regional Office", "Overseas Sri Lankan Missions"},
+        "expected_offices": {"Head Office"},
         "expect_conflict_note": False,
         "expect_amendment_alternative": False,
         "expect_scope_gate": False,
@@ -284,7 +284,7 @@ GOLDEN_SCENARIOS = [
         # this by including it.
         "expected_labels": DUAL_CITIZEN_SET,
         "expected_fee": 10000.00,
-        "expected_offices": {"Head Office", "Kurunegala Regional Office", "Overseas Sri Lankan Missions"},
+        "expected_offices": {"Head Office"},
         "expect_conflict_note": False,
         "expect_amendment_alternative": False,
         "expect_scope_gate": False,
@@ -301,7 +301,7 @@ GOLDEN_SCENARIOS = [
         # against" and dropped the marriage certificate would fail this.
         "expected_labels": STANDARD_CORE | {MARRIAGE_CERT_LABEL},
         "expected_fee": 10000.00,
-        "expected_offices": {"Head Office", "Vavuniya Regional Office", "Overseas Sri Lankan Missions"},
+        "expected_offices": {"Head Office", "Vavuniya Regional Office"},
         "expect_conflict_note": False,
         "expect_amendment_alternative": True,
         "expect_scope_gate": False,
@@ -315,11 +315,58 @@ GOLDEN_SCENARIOS = [
         },
         "expected_labels": DUAL_CITIZEN_SET | {NEW_NIC_LABEL},
         "expected_fee": 20000.00,
-        "expected_offices": {"Head Office", "Kandy Regional Office", "Overseas Sri Lankan Missions"},
+        "expected_offices": {"Head Office", "Kandy Regional Office"},
         "expect_conflict_note": True,
         "expect_amendment_alternative": False,
         "expect_scope_gate": False,
     },
+    # -- 21-23: added for the manual-QA bug-fix round (Part 1) — each one
+    # exercises a specific reported bug against the actual resolver, not
+    # just a unit-level assertion, matching this file's own convention.
+    {
+        "name": "21. Buddhist monk who is also a teacher — bug #6 regression",
+        "answers": {
+            **BASE, "age": "30", "district": "Colombo",
+            "buddhist_priest": "true", "profession": "Teacher",
+        },
+        # Both the profession-gated Educational Certificate AND the
+        # priest-gated Samanera certificate must appear together — a
+        # resolver that still (or again) suppressed buddhist_priest once
+        # a secular profession was stated would never have recorded
+        # buddhist_priest=true in a real intake in the first place; this
+        # checks the requirement layer accepts both facts as independent
+        # and produces both requirements when they're both true.
+        "expected_labels": STANDARD_CORE | {CURRENT_PASSPORT_LABEL, SAMANERA_LABEL, EDUCATIONAL_CERT_LABEL},
+        "expected_fee": 10000.00,
+        "expected_offices": {"Head Office"},
+        "expect_conflict_note": False,
+        "expect_amendment_alternative": False,
+        "expect_scope_gate": False,
+    },
+    {
+        "name": "22. Colombo applicant — bug #1 regression (no Kurunegala, no Mission)",
+        "answers": {**BASE, "age": "30", "district": "Colombo"},
+        "expected_labels": STANDARD_CORE | {CURRENT_PASSPORT_LABEL},
+        "expected_fee": 10000.00,
+        # Exactly Head Office — never Kurunegala Regional Office (~94km
+        # away, an implausible placeholder mapping), and never an
+        # Overseas Mission for a domestic applicant with a known
+        # district.
+        "expected_offices": {"Head Office"},
+        "expect_conflict_note": False,
+        "expect_amendment_alternative": False,
+        "expect_scope_gate": False,
+    },
+    {
+        "name": "23. Under-16 applicant — bug #2 regression (scope gate, not a partial plan)",
+        "answers": {**BASE, "age": "10", "district": "Colombo"},
+        "expected_labels": set(),
+        "expected_fee": None,
+        "expected_offices": set(),
+        "expect_conflict_note": False,
+        "expect_amendment_alternative": False,
+        "expect_scope_gate": True,
+    },
 ]
 
-assert len(GOLDEN_SCENARIOS) == 20, "10 original (BACKEND_PLAN.md Phase 4.7) + 10 added for langgraph-orchestration-branch"
+assert len(GOLDEN_SCENARIOS) == 23, "10 original (BACKEND_PLAN.md Phase 4.7) + 10 added for langgraph-orchestration-branch + 3 for the manual-QA bug-fix round"

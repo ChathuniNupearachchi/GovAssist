@@ -123,7 +123,21 @@ def run_message_turn(db: Session, case: Case, message: str) -> ChatOutcome:
     )
 
     rag_response: RAGResponse | None = None
-    if result.get("should_answer_via_rag"):
+    if result.get("greeting_message"):
+        # Bug fix (manual QA bug #3) — same transport convention as
+        # scope_gate_message below: a deterministic canned message, not
+        # RAG-generated, reusing RAGResponse purely so it flows through
+        # the same persistence/serialization path as every other reply.
+        rag_response = RAGResponse(text=result["greeting_message"], citations=[], grounded=True)
+    elif result.get("scope_gate_message"):
+        # Bug fix: surfaced the moment age<16 is recorded (next_question_
+        # node), not just on an explicit resolve — reuses the RAGResponse
+        # shape purely for transport (this is a deterministic system
+        # message, not a RAG-generated one) so it flows through the same
+        # persistence/serialization path every other assistant reply
+        # already uses.
+        rag_response = RAGResponse(text=result["scope_gate_message"], citations=[], grounded=True)
+    elif result.get("should_answer_via_rag"):
         rag_answer = result.get("rag_answer")
         if rag_answer is None:
             rag_response = RAGResponse(text="I don't have that information.", citations=[], grounded=False)

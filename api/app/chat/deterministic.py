@@ -99,6 +99,32 @@ _MATCHERS = {
 }
 
 
+# Bug fix (manual QA bug #3): "hi", "help", "passport" and close
+# variants used to fall straight through to the pending-question
+# matcher (never matches — "hi" isn't a plausible age/boolean/district
+# token) and then to the Gemini classifier, which had nothing to extract
+# and defaulted to intent="question" — producing "I don't have that
+# information" plus an age question for what was actually a greeting or
+# an orientation request, neither an answerable question nor a stated
+# situation. Deliberately narrow: only the literal reported cases and
+# their closest variants, checked as the ENTIRE stripped, lowercased
+# message — "i need a passport" or "renew my passport" are real stated
+# situations (CLAUDE.md's two-mechanism split) and must still start
+# intake normally, not be swallowed here.
+GREETING_PHRASES = frozenset(
+    {
+        "hi", "hello", "hey", "hiya", "yo", "good morning", "good afternoon", "good evening",
+        "help", "help me", "menu", "start", "start over",
+        "what can you do", "what is this", "what do you do", "who are you",
+        "passport",
+    }
+)
+
+
+def is_greeting(message: str) -> bool:
+    return message.strip().lower() in GREETING_PHRASES
+
+
 def try_deterministic_match(pending_attribute: str, message: str) -> str | None:
     """Return the normalized answer value when `message` is solely a
     plausible answer to `pending_attribute`, else None (falls through to
@@ -109,11 +135,21 @@ def try_deterministic_match(pending_attribute: str, message: str) -> str | None:
     design, not just a bare token.
     """
     stripped = message.strip()
-    if not stripped:
-        return None
 
     if pending_attribute == "profession":
+        # Bug fix (manual QA bug #4): the prompt itself says "leave
+        # blank if you don't have one" — a blank message must record as
+        # no profession ("", the same value BASE test fixtures already
+        # use for "no profession"), not fall through to the classifier
+        # (which has nothing to extract from empty text, so nothing gets
+        # recorded and the same question — plus a spurious "I don't have
+        # that information" — kept coming back). Checked before the
+        # empty-message short-circuit below, which every other attribute
+        # still hits.
         return stripped
+
+    if not stripped:
+        return None
 
     matcher = _MATCHERS.get(pending_attribute)
     if matcher is None:

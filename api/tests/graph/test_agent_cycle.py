@@ -170,3 +170,55 @@ def test_clearing_the_checkpoint_does_not_lose_or_alter_case_answer_rows(
         db.query(CaseAnswer).filter(CaseAnswer.case_id == case.id).delete()
         db.query(Case).filter(Case.id == case.id).delete()
         db.commit()
+
+
+# --- Manual-QA bug #2: the scope gate must fire the turn age<16 is
+# recorded, on a message turn, not only on the explicit resolve action ---
+
+
+def test_scope_gate_fires_immediately_on_the_message_turn_age_is_recorded(db, case, mock_agent_client):
+    """Regression: an under-16 case used to keep being asked further
+    questions (name_changed, dual_citizen, ...) for as long as the
+    citizen kept answering, only refusing once resolve was eventually
+    called. The very next response after age is recorded under 16 must
+    be the scope-gate message, with no further question offered — even
+    when the same message also happened to contain a question (the
+    autouse classify mock always reports contains_question=True), the
+    scope gate must still win over routing into the RAG/agent cycle."""
+    from app.engine.renewal_intake import RENEWAL_QUESTIONS
+    from app.engine.resolver import SCOPE_GATE_UNDER_16
+    from app.models import Question
+
+    age_prompt = RENEWAL_QUESTIONS[0][1]
+    question = db.query(Question).filter(
+        Question.service_id == case.service_id, Question.prompt == age_prompt
+    ).first()
+    db.add(CaseAnswer(case_id=case.id, question_id=question.id, value="15"))
+    db.commit()
+
+    result, _ = _invoke_message(db, case, "ok, what else do you need?")
+
+    assert result.get("scope_gate_message") == SCOPE_GATE_UNDER_16
+    assert result.get("next_pending_question_id") is None
+    # Must not have fallen through into the agent/RAG cycle either.
+    assert result.get("rag_answer") is None
+
+
+# --- Manual-QA bug #3: a greeting is neither an answerable question nor
+# a situation — it must not start intake or hit the RAG fallback ---
+
+
+@pytest.mark.parametrize("message", ["hi", "help", "passport", "Hello", "  HELP  "])
+def test_greeting_gets_an_orientation_not_a_question_or_rag_fallback(db, case, message):
+    """Regression: "hi", "help", "passport" used to fall through to the
+    classifier, misclassify as a question with nothing extracted, and
+    produce "I don't have that information" plus the age question — for
+    input that is neither a question nor a stated situation."""
+    from app.graph.nodes import GREETING_ORIENTATION_MESSAGE
+
+    result, _ = _invoke_message(db, case, message)
+
+    assert result.get("greeting_message") == GREETING_ORIENTATION_MESSAGE
+    assert result.get("next_pending_question_id") is None
+    assert result.get("rag_answer") is None
+    assert result.get("extracted") == {}

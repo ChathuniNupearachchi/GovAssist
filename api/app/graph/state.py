@@ -73,6 +73,21 @@ class GraphState(TypedDict, total=False):
     next_pending_question_id: str | None
     next_pending_question_prompt: str | None
     resolution: dict[str, Any] | None  # resolve_case-shaped dict (action="resolve")
+    # Set by next_question_node the moment age<16 is recorded, on EITHER
+    # action — bug fix: the scope gate used to only short-circuit on
+    # action="resolve", so a message-turn intake kept asking further
+    # questions (name_changed, dual_citizen, ...) for an under-16 case
+    # until the citizen eventually called resolve. Non-None means "stop
+    # asking questions, surface this message instead" for that turn.
+    scope_gate_message: str | None
+    # Set by classify_node when the message is a bare greeting/orientation
+    # request ("hi", "help", "passport", ...) — bug fix: these used to
+    # fall through to the classifier, misclassify as "question", and
+    # produce "I don't have that information" plus an intake question. A
+    # greeting is neither an answerable question nor a stated situation,
+    # so it short-circuits straight to this canned response instead of
+    # starting or continuing intake.
+    greeting_message: str | None
 
     # --- presentation-only, action="message" ---
     acknowledgement: str | None

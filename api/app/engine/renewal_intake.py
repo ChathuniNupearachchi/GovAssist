@@ -56,14 +56,23 @@ RENEWAL_QUESTIONS: list[tuple[str, str, str, int, str | None]] = [
         "Legal reference: section 19(2) of the Citizenship Act, "
         "as amended by Act No. 18 of 1948.",
     ),
+    # buddhist_priest is asked BEFORE profession, and unconditionally
+    # (bug fix — manual QA bug #6): monks in Sri Lanka commonly also
+    # hold a secular profession (teacher, scholar, lecturer), so a
+    # profession-based suppression of this question — the prior design —
+    # silently excluded a monk who answered e.g. "teacher" from the
+    # Samanera/Higher Ordination certificate requirement, which is
+    # mandatory for priests regardless of any other occupation they also
+    # hold. See app.seed.phase4_renewal: no QUESTION_CONDITION is linked
+    # to this question anymore.
+    ("buddhist_priest", "Are you a Buddhist priest?", "boolean", 6, None),
     (
         "profession",
         "What is your job or occupation? (leave blank if you don't have one)",
         "single",
-        6,
+        7,
         None,
     ),
-    ("buddhist_priest", "Are you a Buddhist priest?", "boolean", 7, None),
     ("district", "Which district are you applying from?", "district", 8, None),
     (
         "service_basis",

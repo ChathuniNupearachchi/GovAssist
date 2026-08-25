@@ -59,6 +59,14 @@ class ConflictNote:
 class OfficeResolution:
     offices: list[ResolvedOffice]
     conflict_note: ConflictNote | None = None
+    # Set whenever a specific district narrowed the regional office list
+    # (never set when district is unknown and every regional office is
+    # listed) — the Phase 2 district-to-office mapping was recorded as a
+    # geographic placeholder, never verified against the Department's own
+    # jurisdiction data (no such data is published). Presented alongside
+    # the offices, not asserted away, per the office-resolver bug fix's
+    # explicit instruction not to claim an office is "nearest."
+    district_mapping_caveat: str | None = None
 
 
 @dataclass(frozen=True)

@@ -2,6 +2,15 @@
 data-driven buddhist_priest skipping, a plain-language wording audit,
 the application form requirement + its structured resources, and the
 Divisional-Secretariat-never-a-submission-location guarantee.
+
+`test_secular_profession_skips_buddhist_priest_question` and
+`test_blank_or_unmatched_profession_still_asks_buddhist_priest` were
+rewritten (manual QA bug #6): the priest question used to be suppressed
+by a stated secular profession, which silently excluded a monk who also
+holds a secular occupation (teacher, scholar, lecturer — common in Sri
+Lanka) from the mandatory Samanera/Higher Ordination certificate
+requirement. buddhist_priest is now asked unconditionally, before
+profession, regardless of what profession is (or isn't) stated.
 """
 
 from __future__ import annotations
@@ -12,7 +21,7 @@ from sqlalchemy import select
 
 from app.engine.next_question import next_question
 from app.engine.offices import resolve_offices
-from app.engine.renewal_intake import RENEWAL_QUESTIONS
+from app.engine.renewal_intake import ATTRIBUTE_BY_PROMPT, RENEWAL_QUESTIONS, is_relevant
 from app.engine.resolver import resolve_case
 from app.models import Office, Question
 
@@ -25,30 +34,44 @@ BASE_UP_TO_PROFESSION = {
 }
 
 
-def test_secular_profession_skips_buddhist_priest_question(renewal_service_id, db):
-    for profession in ("doctor", "Doctor", "TEACHER", "engineer"):
-        q = next_question(
-            db,
-            renewal_service_id,
-            {**BASE_UP_TO_PROFESSION, "profession": profession},
-        )
-        assert q is not None
-        assert "buddhist priest" not in q.prompt.lower(), (
-            f"buddhist_priest was asked despite profession={profession!r}"
-        )
+def test_buddhist_priest_is_asked_before_profession(renewal_service_id, db):
+    priest_seq = next(seq for attr, _, _, seq, _ in RENEWAL_QUESTIONS if attr == "buddhist_priest")
+    profession_seq = next(seq for attr, _, _, seq, _ in RENEWAL_QUESTIONS if attr == "profession")
+    assert priest_seq < profession_seq
+
+    q = next_question(db, renewal_service_id, BASE_UP_TO_PROFESSION)
+    assert q is not None
+    assert "buddhist priest" in q.prompt.lower()
 
 
-def test_blank_or_unmatched_profession_still_asks_buddhist_priest(renewal_service_id, db):
-    for profession in ("", "fisherman", "monk"):
-        q = next_question(
-            db,
-            renewal_service_id,
-            {**BASE_UP_TO_PROFESSION, "profession": profession},
-        )
-        assert q is not None
-        assert "buddhist priest" in q.prompt.lower(), (
-            f"buddhist_priest was skipped despite profession={profession!r}"
-        )
+def test_buddhist_priest_is_asked_regardless_of_stated_profession(renewal_service_id, db):
+    """Regression for manual QA bug #6: a stated profession — secular,
+    unmatched, or blank — must never suppress the priest question. Checks
+    `is_relevant` directly (not just question order) so this actually
+    verifies no suppressing condition exists, rather than the question's
+    new earlier sequence position merely masking one."""
+    priest_question = db.scalars(
+        select(Question).where(Question.service_id == renewal_service_id)
+    ).all()
+    priest_question = next(
+        q for q in priest_question if ATTRIBUTE_BY_PROMPT.get(q.prompt) == "buddhist_priest"
+    )
+    for profession in ("doctor", "Doctor", "TEACHER", "engineer", "", "fisherman", "monk"):
+        assert is_relevant(
+            db, priest_question, {**BASE_UP_TO_PROFESSION, "profession": profession}
+        ), f"buddhist_priest was suppressed despite profession={profession!r}"
+
+
+def test_profession_question_gated_on_age(renewal_service_id, db):
+    """Manual QA bug #5: profession must not be asked of an applicant
+    known to be under 16 — reuses the same age<16 condition the
+    fingerprint requirement gates on."""
+    profession_question = next(
+        q for q in db.scalars(select(Question).where(Question.service_id == renewal_service_id)).all()
+        if ATTRIBUTE_BY_PROMPT.get(q.prompt) == "profession"
+    )
+    assert not is_relevant(db, profession_question, {**BASE_UP_TO_PROFESSION, "age": "15"})
+    assert is_relevant(db, profession_question, {**BASE_UP_TO_PROFESSION, "age": "16"})
 
 
 # Plain-language audit: no QUESTION.prompt should require knowing an Act,

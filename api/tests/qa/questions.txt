@@ -1,0 +1,173 @@
+# GovAssist conversational QA scenarios — read by tests/qa/harness.py.
+#
+# Format: one scenario per non-comment, non-blank line, grouped into
+# categories via "## CATEGORY: <letter> — <name>" headers. Lines within a
+# category are turns of ONE scenario unless separated by a blank line —
+# multiple turns on consecutive lines (no blank line between them) are
+# driven as one multi-turn conversation on a single fresh device_ref;
+# a blank line starts a new scenario (and a new device_ref) within the
+# same category. Edit this file freely without touching harness code —
+# category letters and the two explicitly-asserted behaviors (an
+# unexpected answer to a pending question re-asks it; a correction
+# updates the recorded fact) are the only things the harness code itself
+# depends on by name.
+#
+# Every category except H and J is a set of INDEPENDENT single-turn
+# probes (each line is its own fresh conversation) — H and J are
+# deliberately multi-turn (an interruption, or a fact then its
+# correction), so their turns stay grouped without a blank line between
+# them.
+
+## CATEGORY: A — Greetings and single words
+hi
+
+help
+
+passport
+
+i need passport
+
+renew passport
+
+## CATEGORY: B — Situations
+expired last year
+
+expiring in 3 months
+
+name changed after marriage
+
+dual citizen
+
+Buddhist monk who is also a teacher
+
+age 62
+
+expired 8 years ago
+
+still have old passport
+
+do not have old passport
+
+urgent, flying in 3 days
+
+applying from Kandy
+
+applying from Dubai
+
+## CATEGORY: C — General questions
+how much
+
+how long
+
+what documents
+
+where is the head office
+
+working hours
+
+where do I go in Matara
+
+what is an authorised photo studio
+
+do I need my birth certificate
+
+what is Form K-35A
+
+do I need fingerprints
+
+can I apply online
+
+where do I get the application form
+
+what if my birth certificate is in Tamil
+
+do I need photocopies
+
+## CATEGORY: D — The amendment comparison, asked four ways
+should I amend or get a new one
+
+is it cheaper to just change the name
+
+what is the difference between amendment and renewal
+
+can I just update my name instead
+
+## CATEGORY: E — Out of scope, must refuse honestly
+driving licence
+
+birth certificate
+
+Australian visa
+
+NIC
+
+weather in Colombo
+
+who is the president
+
+write me a poem
+
+## CATEGORY: F — Scope gate
+passport for my 8 year old
+
+my son is 14
+
+applying for my child
+
+## CATEGORY: G — Wrong service, should redirect
+I lost my passport
+
+stolen while abroad
+
+someone took my bag
+
+## CATEGORY: H — Mid-intake interruptions (each scenario: start a renewal, then interrupt)
+I need to renew my passport
+what is the difference between normal and urgent
+
+I need to renew my passport
+why do you need my district
+
+I need to renew my passport
+how much will this cost
+
+I need to renew my passport
+what does special provisions mean
+
+I need to renew my passport
+can I stop and come back later
+
+## CATEGORY: I — Awkward input
+මගේ පාස්පෝර්ට් එක අවුරුද්දකින් කල් ඉකුත් වෙනවා
+
+எனது கடவுச்சீட்டு காலாவதியாகிவிட்டது
+
+I really don't know where to start with this whole passport thing, it's been sitting on my desk for months and my neighbor said I need to go to some office but I don't know which one and also my brother said something about a form but I lost it and I'm not sure if my old passport still counts or if I need a completely new one and also I heard the fees went up recently so I'm worried about the cost and whether I need to bring my wife's documents too since we're applying around the same time
+
+asdkjfh qwerty 12345 !!!
+
+# Note: as a fresh single-turn scenario, `age` is always the pending
+# question here (it's the first renewal question), so these two also
+# exercise "bare token answers the actually-pending question" rather
+# than literally "no question pending" (that state only exists once
+# intake is complete or a case is resolved) — the dedicated explicit
+# assertion in harness.py (`check_unexpected_answer_reasks_pending_
+# question`) covers the "unexpected answer to a pending question"
+# behavior directly; these two are still worth judging for tone/quality
+# on their own.
+42
+
+yes
+
+## CATEGORY: J — Corrections (each scenario: state a fact, then correct it)
+I am 34
+actually I'm 45 not 34
+
+I am from Colombo
+I meant Kandy not Colombo
+
+I am 30
+can I change my answer
+
+I need urgent service
+no wait, I don't need it urgently
