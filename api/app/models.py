@@ -370,6 +370,28 @@ class DocumentChunk(Base):
     source_document: Mapped["SourceDocument"] = relationship()
 
 
+class AuthorizedStudio(Base):
+    """Phase 9: authorized photo studios, by district — a relational
+    lookup, not a RAG document. See the phase-9-service-expansion
+    migration's docstring for why."""
+
+    __tablename__ = "authorized_studio"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    # Canonical spelling (app.chat.deterministic.DISTRICTS), not the
+    # source site's own spelling or numeric id.
+    district: Mapped[str] = mapped_column(String, nullable=False)
+    name: Mapped[str] = mapped_column(String, nullable=False)
+    address: Mapped[str] = mapped_column(String, nullable=False)
+    phone: Mapped[str | None] = mapped_column(String, nullable=True)
+    source_document_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("source_document.id"), nullable=False
+    )
+    verified_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+    source_document: Mapped["SourceDocument"] = relationship()
+
+
 class AdminUser(Base):
     __tablename__ = "admin_user"
     __table_args__ = (

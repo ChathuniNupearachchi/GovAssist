@@ -20,17 +20,38 @@ LiteLLM's 100+ other supported providers) if a free tier proves
 inadequate is a config change, not a code change, per the branch's
 explicit goal of making every provider swap reversible.
 
-This module does NOT decide what happens on failure — a bad response, a
-rate-limited free tier, or any other exception is raised straight through.
-Each call site already owns (or, for `classify`, now owns per this
-change) its own fallback: `rephrase_question` falls back to the canonical
-prompt, `build_acknowledgement` returns `None`, `classify` falls back to
-`intent="question"` with no extracted facts — the same "low-confidence
-defaults to a question" shape the intent-classification spec already
-requires for a low-*confidence* result, now covering a failed call too.
-That keeps "a free tier being unavailable must degrade gracefully, not
-error" true without this module needing to know three different callers'
-three different safe defaults.
+This module still does NOT decide what happens once every option below
+is exhausted — a bad response or any other exception is raised straight
+through, and each call site already owns (or, for `classify`, owns per
+an earlier change) its own fallback: `rephrase_question` falls back to
+the canonical prompt, `build_acknowledgement` returns `None`, `classify`
+falls back to `intent="question"` with no extracted facts. That keeps
+"a free tier being unavailable must degrade gracefully, not error" true
+without this module needing to know three different callers' three
+different safe defaults. What changed (session that hit Gemini's daily
+free-tier quota exhausted mid-QA-run, confirmed directly — a fresh
+isolated call still 429'd): this module now tries harder *before*
+raising, rather than raising on the first 429:
+
+1. **Key rotation** — `GEMINI_API_KEY` and `GEMINI_API_KEY_2` (a second
+   key from a separate Google Cloud project; the free tier is
+   per-project, so a second key is genuinely separate quota, not a
+   workaround pretending to be one — confirmed directly, the second key
+   answered a call after the first was already 429'ing). Only applies
+   to `gemini/*` models; every other provider still resolves its
+   credential the way LiteLLM/that provider's SDK normally does.
+2. **Cross-provider fallback** — once every configured Gemini key is
+   rate-limited, `LLM_FALLBACK_MODEL_<JOB>` (Groq's free tier by
+   default for `classify`/`rephrase` — generous limits, a different
+   company's infrastructure, so a Gemini-wide outage doesn't take both
+   down at once) is tried before giving up. Empty/unset for a job means
+   no fallback — same as before this change.
+
+Every attempt (each Gemini key, then the fallback) is still one real
+provider call — this does not reduce API usage, it only avoids a single
+rate-limited key turning into a failed turn when another option was
+available. See `app.chat.classifier`'s in-process cache for actual call
+reduction during a QA run specifically.
 
 `app.chat.agent` (the one job kept on Claude) is intentionally NOT routed
 through this gateway — it calls the `anthropic` SDK directly, unchanged,
@@ -47,9 +68,18 @@ import os
 from typing import TypeVar
 
 import litellm
+from dotenv import load_dotenv
 from pydantic import BaseModel
 
 from app.observability.tracing import traced_generation
+
+# Self-sufficient rather than relying on some other imported module
+# (app.db.session, app.ingestion.pdf_extraction) having already called
+# this — confirmed directly this session: a bare script importing only
+# this module's dependency chain never loaded .env, so GROQ_API_KEY
+# (needed for the cross-provider fallback below) was silently absent
+# from os.environ even though it was genuinely set in the file.
+load_dotenv()
 
 T = TypeVar("T", bound=BaseModel)
 
@@ -64,11 +94,57 @@ T = TypeVar("T", bound=BaseModel)
 # turn. The lite model has materially more free-tier headroom.
 DEFAULT_MODEL = os.environ.get("LLM_MODEL_DEFAULT", "gemini/gemini-flash-lite-latest")
 
+# Every Gemini key available for rotation, in order — GEMINI_API_KEY
+# first, then GEMINI_API_KEY_2 if set. A second key is genuinely
+# separate free-tier quota (per-Google-Cloud-project, not per-account),
+# confirmed directly this session. Only consulted for gemini/* models —
+# see model_for/_is_gemini_model below.
+_GEMINI_API_KEYS = [
+    key for key in (os.environ.get("GEMINI_API_KEY"), os.environ.get("GEMINI_API_KEY_2")) if key
+]
+
+# Cross-provider fallback per job, tried once every Gemini key above is
+# rate-limited. Groq's free tier for classify/rephrase by default (a
+# different company's infrastructure — a Gemini-wide 429 doesn't take
+# this down too); empty for any job not listed means no fallback,
+# matching this module's original "raise straight through" behavior.
+_DEFAULT_FALLBACK_MODEL_BY_JOB = {
+    "classify": "groq/llama-3.3-70b-versatile",
+    "rephrase": "groq/llama-3.3-70b-versatile",
+}
+
 
 def model_for(job: str) -> str:
     """Resolves the model to use for `job` — `LLM_MODEL_<JOB>` (e.g.
     `LLM_MODEL_CLASSIFY`) if set, else `DEFAULT_MODEL`."""
     return os.environ.get(f"LLM_MODEL_{job.upper()}", DEFAULT_MODEL)
+
+
+def fallback_model_for(job: str) -> str | None:
+    """Resolves the cross-provider fallback for `job` —
+    `LLM_FALLBACK_MODEL_<JOB>` if set, else this module's own default
+    (Groq for classify/rephrase, none otherwise). Returns None when no
+    fallback applies — callers must not attempt one in that case."""
+    return os.environ.get(f"LLM_FALLBACK_MODEL_{job.upper()}", _DEFAULT_FALLBACK_MODEL_BY_JOB.get(job))
+
+
+def _is_gemini_model(model: str) -> bool:
+    return model.startswith("gemini/")
+
+
+def _is_rate_limit_error(exc: Exception) -> bool:
+    return "429" in str(exc) or "RESOURCE_EXHAUSTED" in str(exc) or isinstance(
+        exc, getattr(litellm, "RateLimitError", ())
+    )
+
+
+def _complete_once(model: str, messages: list[dict], max_tokens: int, response_model: type[T], api_key: str | None = None):
+    kwargs: dict = {"model": model, "max_tokens": max_tokens, "messages": messages, "response_format": response_model}
+    if api_key is not None:
+        kwargs["api_key"] = api_key
+    response = litellm.completion(**kwargs)
+    content = response.choices[0].message.content
+    return response_model.model_validate_json(content), content
 
 
 def structured_completion(
@@ -81,27 +157,53 @@ def structured_completion(
     """Runs one structured-output completion for `job` and returns a
     validated `response_model` instance.
 
-    Raises on any failure (API error, rate limit, malformed/unparseable
-    response) — deliberately not swallowed here; see the module
-    docstring for why each call site owns its own fallback instead.
-    Wrapped in a Langfuse generation span (Task Group 7) — this one call
-    site covers "every LLM call" for all three Gemini-routed jobs
-    (classify/rephrase/acknowledge) at once, rather than instrumenting
-    each of their three modules separately.
+    Tries, in order, before raising: every rotation key configured for
+    a `gemini/*` model (see `_GEMINI_API_KEYS`), then the job's
+    cross-provider fallback (see `fallback_model_for`) if one is
+    configured — but ONLY on a rate-limit error specifically; any other
+    failure (malformed response, a genuine non-quota API error) raises
+    immediately, exactly as before, since retrying a different key or
+    provider would not fix a bad request or a parsing failure. Once
+    every option is exhausted, raises the last exception — still not
+    swallowed here; see the module docstring for why each call site
+    owns its own fallback instead.
+
+    Wrapped in a Langfuse generation span (Task Group 7) per attempt —
+    each key/provider tried is its own real call and its own span, so a
+    trace shows exactly which attempt actually succeeded (or that all
+    of them failed).
     """
     model = model_for(job)
     messages = [
         {"role": "system", "content": system},
         {"role": "user", "content": user},
     ]
-    with traced_generation(f"gateway:{job}", model, messages) as gen:
-        response = litellm.completion(
-            model=model,
-            max_tokens=max_tokens,
-            messages=messages,
-            response_format=response_model,
-        )
-        content = response.choices[0].message.content
-        result = response_model.model_validate_json(content)
-        gen.update(output=content)
-        return result
+
+    attempts: list[tuple[str, str | None]] = []
+    if _is_gemini_model(model) and _GEMINI_API_KEYS:
+        attempts.extend((model, key) for key in _GEMINI_API_KEYS)
+    else:
+        attempts.append((model, None))
+
+    fallback = fallback_model_for(job)
+    if fallback:
+        attempts.append((fallback, None))
+
+    last_exc: Exception | None = None
+    for attempt_model, api_key in attempts:
+        with traced_generation(f"gateway:{job}", attempt_model, messages) as gen:
+            try:
+                result, content = _complete_once(attempt_model, messages, max_tokens, response_model, api_key)
+                gen.update(output=content)
+                return result
+            except Exception as exc:
+                gen.update(output={"error": str(exc)})
+                last_exc = exc
+                if not _is_rate_limit_error(exc):
+                    raise
+                # Rate-limited on this key/model — try the next one in
+                # `attempts`, if any remain.
+                continue
+
+    assert last_exc is not None  # attempts is never empty
+    raise last_exc

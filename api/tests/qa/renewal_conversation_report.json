@@ -1,0 +1,242 @@
+[
+  {
+    "name": "1. Straightforward adult renewal, Colombo, normal",
+    "opening_message": "my passport expired what do i do",
+    "opening_reply": "I don't have that information.",
+    "turns_taken": 10,
+    "reached_resolution": true,
+    "stopped_reason": null,
+    "resolve_status_code": 200,
+    "mismatches": []
+  },
+  {
+    "name": "2. Same but urgent",
+    "opening_message": "i need my passport urgently, can you help",
+    "opening_reply": "I don't have that information.",
+    "turns_taken": 9,
+    "reached_resolution": true,
+    "stopped_reason": null,
+    "resolve_status_code": 200,
+    "mismatches": []
+  },
+  {
+    "name": "3. Name changed after marriage",
+    "opening_message": "i got married and my name changed, need to renew my passport",
+    "opening_reply": null,
+    "turns_taken": 10,
+    "reached_resolution": true,
+    "stopped_reason": null,
+    "resolve_status_code": 200,
+    "mismatches": []
+  },
+  {
+    "name": "4. Expired over 5 years ago",
+    "opening_message": "my passport expired like 5 years ago, still valid to renew?",
+    "opening_reply": "I don't have that information.",
+    "turns_taken": 10,
+    "reached_resolution": true,
+    "stopped_reason": null,
+    "resolve_status_code": 200,
+    "mismatches": []
+  },
+  {
+    "name": "5. Applying from Kandy",
+    "opening_message": "i live in kandy and need to renew my passport",
+    "opening_reply": null,
+    "turns_taken": 8,
+    "reached_resolution": true,
+    "stopped_reason": null,
+    "resolve_status_code": 200,
+    "mismatches": []
+  },
+  {
+    "name": "6. Dual citizen",
+    "opening_message": "im a dual citizen and need to renew my sri lankan passport",
+    "opening_reply": null,
+    "turns_taken": 10,
+    "reached_resolution": true,
+    "stopped_reason": null,
+    "resolve_status_code": 200,
+    "mismatches": []
+  },
+  {
+    "name": "7. Buddhist priest",
+    "opening_message": "i am a buddhist priest and need to renew my passport",
+    "opening_reply": null,
+    "turns_taken": 9,
+    "reached_resolution": true,
+    "stopped_reason": null,
+    "resolve_status_code": 200,
+    "mismatches": []
+  },
+  {
+    "name": "8. No longer holds old passport",
+    "opening_message": "i dont have my old passport anymore, need a new one",
+    "opening_reply": "Since your old passport is gone, this will be treated as a **lost passport** case (a special category of renewal), and there are some extra requirements beyond a normal renewal:\n\n1. **Police complaint** \u2013 you must submit the original of the police complaint about the loss, which should include your lost passport number. If you don't have the old passport number, you can obtain it from the Colombo Head Office or a Regional Office.\n2. **If lost abroad** \u2013 you'll also need the temporary travel document (NMRP) you used to re-enter Sri Lanka, plus a photocopy of it.\n3. **Fine (in addition to the normal passport fee)**:\n   - If the passport was lost within one year of issue: **Rs. 20,000** fine.\n   - If lost after one year of issue: **Rs. 15,000** fine (only charged if the passport's validity period hadn't already lapsed).\n\nTo finish processing your specific case (fee, exact document checklist, and accepting office), I still need one more piece of information: **your age** (or the applicant's age), since fees differ for applicants under 16. Could you provide that so I can pull the exact fee and finalize your case?",
+    "turns_taken": 10,
+    "reached_resolution": true,
+    "stopped_reason": null,
+    "resolve_status_code": 200,
+    "mismatches": []
+  },
+  {
+    "name": "9. Applying from abroad",
+    "opening_message": "im currently living abroad and need to renew my passport",
+    "opening_reply": null,
+    "turns_taken": 8,
+    "reached_resolution": true,
+    "stopped_reason": null,
+    "resolve_status_code": 200,
+    "mismatches": []
+  },
+  {
+    "name": "10. Name changed and urgent and Kandy",
+    "opening_message": "need an urgent passport renewal, my name changed and im in kandy",
+    "opening_reply": "I don't have that information.",
+    "turns_taken": 10,
+    "reached_resolution": true,
+    "stopped_reason": null,
+    "resolve_status_code": 200,
+    "mismatches": []
+  },
+  {
+    "name": "11. Under-16 applicant returns the scope gate",
+    "opening_message": "need a passport for my child, she's 10",
+    "opening_reply": "GovAssist does not yet support passport applications for applicants under 16. Under-16 applications have their own document set, consent requirements, and fee structure (validity-period dependent: LKR 3,000/9,000 for 3-year validity, LKR 10,000/20,000 for 10-year) that this build does not yet encode. Please contact the Department of Immigration and Emigration directly for a minor's application.",
+    "turns_taken": 1,
+    "reached_resolution": true,
+    "stopped_reason": null,
+    "resolve_status_code": 200,
+    "mismatches": []
+  },
+  {
+    "name": "12. Exactly 16 \u2014 fingerprint requirement's lower boundary",
+    "opening_message": "im 16 renewing my passport, do i need fingerprints",
+    "opening_reply": "Per Department of Immigration & Emigration rules, fingerprints are mandatory for every applicant who is above 16 years of age and below 60 years of age (this was introduced under the Immigration and Emigration Act No. 20 of 1948 as amended by Act No. 7 of 2015). Fingerprints are only captured at the Head Office or Regional Offices, and you must appear in person for this.\n\nSince the rule's threshold is \"above 16,\" a 16-year-old applicant is right at the boundary. If you are still exactly 16 (not yet older than 16), the fingerprint requirement technically does not yet apply to you; once you turn older than 16, it will. Given how close you are to this threshold, it's a good idea to confirm your exact status with the passport office when you submit your renewal application, since they apply this rule based on your age at the time of application.",
+    "turns_taken": 8,
+    "reached_resolution": true,
+    "stopped_reason": null,
+    "resolve_status_code": 200,
+    "mismatches": []
+  },
+  {
+    "name": "13. Exactly 60 \u2014 fingerprint requirement's upper boundary, still included",
+    "opening_message": "im 60, renewing my passport, still need fingerprints?",
+    "opening_reply": "I don't have that information.",
+    "turns_taken": 9,
+    "reached_resolution": true,
+    "stopped_reason": null,
+    "resolve_status_code": 200,
+    "mismatches": []
+  },
+  {
+    "name": "14. Exactly 61 \u2014 one past the boundary, fingerprints now excluded",
+    "opening_message": "im 61 renewing my passport",
+    "opening_reply": null,
+    "turns_taken": 8,
+    "reached_resolution": true,
+    "stopped_reason": null,
+    "resolve_status_code": 200,
+    "mismatches": []
+  },
+  {
+    "name": "15. Dual citizen under section 19(2) \u2014 the AND-condition positive case",
+    "opening_message": "im a dual citizen under the special provisions route, renewing my passport",
+    "opening_reply": null,
+    "turns_taken": 10,
+    "reached_resolution": true,
+    "stopped_reason": null,
+    "resolve_status_code": 200,
+    "mismatches": []
+  },
+  {
+    "name": "16. Section 19(2) alone, not a dual citizen \u2014 the AND-condition near-miss",
+    "opening_message": "renewing my passport, i applied under the special provisions route",
+    "opening_reply": "I don't have that information.",
+    "turns_taken": 10,
+    "reached_resolution": true,
+    "stopped_reason": null,
+    "resolve_status_code": 200,
+    "mismatches": []
+  },
+  {
+    "name": "17. Profession stated \u2014 the educational certificate branch",
+    "opening_message": "im a doctor renewing my passport",
+    "opening_reply": null,
+    "turns_taken": 9,
+    "reached_resolution": true,
+    "stopped_reason": null,
+    "resolve_status_code": 200,
+    "mismatches": []
+  },
+  {
+    "name": "18. Buddhist priest who is also a dual citizen \u2014 the set-replacement near-miss",
+    "opening_message": "im a buddhist priest and also a dual citizen, renewing my passport",
+    "opening_reply": null,
+    "turns_taken": 9,
+    "reached_resolution": true,
+    "stopped_reason": null,
+    "resolve_status_code": 200,
+    "mismatches": []
+  },
+  {
+    "name": "19. No current passport and a changed name, together",
+    "opening_message": "dont have my old passport and my name changed too, need to renew",
+    "opening_reply": null,
+    "turns_taken": 8,
+    "reached_resolution": true,
+    "stopped_reason": null,
+    "resolve_status_code": 200,
+    "mismatches": []
+  },
+  {
+    "name": "20. Everything at once \u2014 boundary age, dual citizen, section 19(2), urgent, Kandy",
+    "opening_message": "urgent renewal needed, im a dual citizen under special provisions, in kandy",
+    "opening_reply": null,
+    "turns_taken": 7,
+    "reached_resolution": true,
+    "stopped_reason": null,
+    "resolve_status_code": 200,
+    "mismatches": []
+  },
+  {
+    "name": "21. Buddhist monk who is also a teacher \u2014 bug #6 regression",
+    "opening_message": "im a buddhist monk who also teaches, renewing my passport",
+    "opening_reply": "I don't have that information.",
+    "turns_taken": 10,
+    "reached_resolution": true,
+    "stopped_reason": null,
+    "resolve_status_code": 200,
+    "mismatches": []
+  },
+  {
+    "name": "22. Colombo applicant \u2014 bug #1 regression (no Kurunegala, no Mission)",
+    "opening_message": "renewing my passport, i live in colombo",
+    "opening_reply": "I don't have that information.",
+    "turns_taken": 10,
+    "reached_resolution": true,
+    "stopped_reason": null,
+    "resolve_status_code": 200,
+    "mismatches": []
+  },
+  {
+    "name": "23. Under-16 applicant \u2014 bug #2 regression (scope gate, not a partial plan)",
+    "opening_message": "need a passport for my 10 year old son",
+    "opening_reply": "GovAssist does not yet support passport applications for applicants under 16. Under-16 applications have their own document set, consent requirements, and fee structure (validity-period dependent: LKR 3,000/9,000 for 3-year validity, LKR 10,000/20,000 for 10-year) that this build does not yet encode. Please contact the Department of Immigration and Emigration directly for a minor's application.",
+    "turns_taken": 1,
+    "reached_resolution": true,
+    "stopped_reason": null,
+    "resolve_status_code": 200,
+    "mismatches": []
+  },
+  {
+    "name": "24. Explicit applying_from=sri_lanka \u2014 domestic branch (regression)",
+    "opening_message": "renewing my passport, im in kandy",
+    "opening_reply": null,
+    "turns_taken": 8,
+    "reached_resolution": true,
+    "stopped_reason": null,
+    "resolve_status_code": 200,
+    "mismatches": []
+  }
+]

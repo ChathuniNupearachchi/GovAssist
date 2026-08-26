@@ -1,6 +1,6 @@
 """6.1 Deterministic first pass.
 
-A per-attribute matcher table for the 9 renewal intake attributes (see
+A per-attribute matcher table for the 10 renewal intake attributes (see
 `app.engine.renewal_intake.RENEWAL_QUESTIONS`), keyed by `attribute` —
 not `Question.answer_type` — because `answer_type="single"` covers
 three different matching rules (numeric `age`, an enum-with-synonyms
@@ -52,6 +52,72 @@ DISTRICTS = [
 ]
 _DISTRICT_BY_LOWER: dict[str, str] = {d.lower(): d for d in DISTRICTS}
 
+# Bug fix (renewal re-verification, scenario 9 "Applying from abroad"):
+# the district question has no valid answer for a citizen who isn't in
+# Sri Lanka. The first fix matched abroad *phrases* directly against the
+# district question, which was fragile — it recognized "abroad" and
+# "overseas" but not "Dubai", "I live in Australia", or "UAE", so most
+# real overseas citizens still got asked which Sri Lankan district
+# they're in. The proper fix (per the Phase 9 proposal, now built) is a
+# dedicated `applying_from` question asked BEFORE district
+# (`app.engine.renewal_intake.RENEWAL_QUESTIONS`, sequence 8) with a
+# closed sri_lanka/abroad answer — `district` is then skipped entirely
+# for an abroad answer via a seeded `QUESTION_CONDITION`
+# (`app.seed.phase4_renewal`), not asked at all, so there's no district
+# text for a citizen abroad to mismatch against in the first place.
+# Country names beyond the literal synonyms below (a "Dubai"/"Australia"
+# answer to the applying_from question) fall through to the Gemini
+# classifier, which is told to infer sri_lanka/abroad from a named
+# location (`app.chat.classifier`), rather than hand-maintaining a
+# country list here.
+_SRI_LANKA_PHRASES = frozenset(
+    {
+        "sri lanka", "in sri lanka", "inside sri lanka", "domestic",
+        "here", "local", "i'm in sri lanka", "im in sri lanka",
+        "i am in sri lanka",
+    }
+)
+_ABROAD_PHRASES = frozenset(
+    {
+        "abroad", "overseas", "not in sri lanka", "outside sri lanka",
+        "i'm abroad", "im abroad", "i am abroad", "living abroad",
+        "outside the country",
+    }
+)
+
+
+def _match_applying_from(stripped_lower: str) -> str | None:
+    if stripped_lower in _SRI_LANKA_PHRASES:
+        return "sri_lanka"
+    if stripped_lower in _ABROAD_PHRASES:
+        return "abroad"
+    return None
+
+
+# passport-lost-stolen's own question — where the passport was lost/
+# stolen (a fact about the past), distinct from `applying_from` (where
+# the citizen is applying from now — see app.engine.renewal_intake's
+# _LOST_LOCATION_QUESTION docstring for why these are separate
+# attributes). Reuses the same core location words as
+# _SRI_LANKA_PHRASES/_ABROAD_PHRASES (location-neutral either way) plus
+# a few phrasings worded for "where it happened" rather than "where I
+# am."
+_LOST_IN_SRI_LANKA_PHRASES = _SRI_LANKA_PHRASES | frozenset(
+    {"lost it here", "lost it in sri lanka", "it was lost here", "in the country"}
+)
+_LOST_ABROAD_PHRASES = _ABROAD_PHRASES | frozenset(
+    {"lost it abroad", "lost it overseas", "it was lost abroad", "outside the country"}
+)
+
+
+def _match_lost_location(stripped_lower: str) -> str | None:
+    if stripped_lower in _LOST_IN_SRI_LANKA_PHRASES:
+        return "sri_lanka"
+    if stripped_lower in _LOST_ABROAD_PHRASES:
+        return "abroad"
+    return None
+
+
 BOOLEAN_ATTRIBUTES = frozenset(
     {"holds_passport", "name_changed", "dual_citizen", "section_19_2", "buddhist_priest"}
 )
@@ -70,6 +136,22 @@ _SERVICE_BASIS_SYNONYMS: dict[str, str] = {
     "rush": "urgent",
 }
 
+# passport-lost-stolen's own question (app.engine.renewal_intake.
+# LOST_STOLEN_QUESTIONS) — selects the LKR 20,000/15,000 penalty tier
+# (pages_e.php?id=8 seq 33-34).
+_LOST_PASSPORT_WITHIN_1_YEAR_PHRASES = frozenset(
+    {
+        "within a year", "within the last year", "less than a year",
+        "under a year", "within_1_year", "within 1 year",
+    }
+)
+_LOST_PASSPORT_OVER_1_YEAR_PHRASES = frozenset(
+    {
+        "over a year", "more than a year", "more than a year ago",
+        "over_1_year", "over 1 year", "longer than a year",
+    }
+)
+
 
 def _match_age(stripped_lower: str) -> str | None:
     return stripped_lower if stripped_lower.isdigit() else None
@@ -81,6 +163,14 @@ def _match_service_basis(stripped_lower: str) -> str | None:
 
 def _match_district(stripped_lower: str) -> str | None:
     return _DISTRICT_BY_LOWER.get(stripped_lower)
+
+
+def _match_lost_passport_age(stripped_lower: str) -> str | None:
+    if stripped_lower in _LOST_PASSPORT_WITHIN_1_YEAR_PHRASES:
+        return "within_1_year"
+    if stripped_lower in _LOST_PASSPORT_OVER_1_YEAR_PHRASES:
+        return "over_1_year"
+    return None
 
 
 def _match_boolean(stripped_lower: str) -> str | None:
@@ -95,6 +185,9 @@ _MATCHERS = {
     "age": _match_age,
     "service_basis": _match_service_basis,
     "district": _match_district,
+    "applying_from": _match_applying_from,
+    "lost_location": _match_lost_location,
+    "lost_passport_age": _match_lost_passport_age,
     **{attribute: _match_boolean for attribute in BOOLEAN_ATTRIBUTES},
 }
 

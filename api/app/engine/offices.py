@@ -2,29 +2,50 @@
 
 Precedence (stated, deterministic — see design.md's "Office resolver
 precedence"):
-1. Head Office is always in the accepting list, regardless of district.
-   Divisional Secretariats are never queried at all — they distribute
-   application forms, not a place submission is accepted, and are
-   excluded by construction (this resolver never selects `type=ds`).
-2. Regional Offices are narrowed to the one(s) whose `district` array
+0. `applying_from` ("sri_lanka" | "abroad", from the intake's own
+   dedicated question — `app.engine.renewal_intake`) is the PRIMARY
+   routing signal. "abroad" routes entirely to the Mission path (id=9)
+   below, skipping every other rule in this list. `district` alone is
+   kept ONLY as a defensive fallback for a caller that doesn't pass
+   `applying_from` (bug fix history: an unknown/empty district used to
+   be the *only* signal for "applying from abroad," which meant any
+   free-text answer other than an exact district name — "Dubai",
+   "Australia", "I live in the UAE" — silently mismatched instead of
+   being recognized as abroad; it also meant a "sri_lanka" answer with a
+   temporarily-missing district could be confused with "abroad" — see
+   below).
+1. Mission path (`applying_from == "abroad"`): the accepting office is
+   the Overseas Sri Lankan Mission only. id=9 seq 2: applications from
+   abroad go "through the Sri Lankan Mission in that country" — never a
+   domestic Head or Regional Office, and no district is asked at all
+   (`app.seed.phase4_renewal`'s `QUESTION_CONDITION` on the district
+   question). Head Office is excluded even though id=9 notes Mission
+   submissions are administratively processed there — that isn't a
+   citizen-facing submission point.
+2. Domestic path (`applying_from == "sri_lanka"`, or the defensive
+   fallback below): Head Office is always in the accepting list,
+   regardless of district. Divisional Secretariats are never queried at
+   all — they distribute application forms, not a place submission is
+   accepted, and are excluded by construction (this resolver never
+   selects `type=ds`).
+3. Regional Offices are narrowed to the one(s) whose `district` array
    contains the citizen's answered district; if no district is known yet,
    all Regional Offices are listed.
-3. Missions are included ONLY when no district is known — a domestic
-   applicant who has stated a Sri Lankan district is never shown Overseas
-   Missions (bug fix: this resolver used to include every Mission
-   unconditionally, regardless of district — a Colombo applicant was
-   shown "Overseas Sri Lankan Missions" alongside a domestic regional
-   office, which is wrong; Missions serve applicants applying from
-   abroad, not a domestic applicant who merely hasn't stated urgency).
-   This is a stand-in for a real "applying from abroad" signal, which
-   the intake does not yet ask for separately — an unknown district is
-   the closest available proxy for "not yet known to be domestic," and a
-   known Sri Lankan district is conclusive proof the applicant is not
-   applying from abroad.
-4. On `basis="urgent"`, the seeded `urgent_office_conflict`
-   ResolutionNote is attached — offices are never removed for it, the
-   conflict is "confirm before traveling," not an exclusion.
-5. Fixed output order: Head Office, then Regional Office(s)
+4. Missions are included in the domestic path ONLY when `applying_from`
+   is neither "sri_lanka" nor "abroad" (i.e. not recorded at all — the
+   defensive fallback) AND no district is known either — a domestic
+   applicant who has stated "sri_lanka" or a Sri Lankan district is
+   never shown Overseas Missions (bug fix: this resolver used to include
+   every Mission unconditionally, regardless of district — a Colombo
+   applicant was shown "Overseas Sri Lankan Missions" alongside a
+   domestic regional office, which is wrong).
+5. On `basis="urgent"`, the seeded `urgent_office_conflict`
+   ResolutionNote is attached in the domestic path only — the conflict
+   text is about Head Office vs. Regional Office urgent-service hours,
+   which doesn't apply once the only accepting office is a Mission.
+   Offices are never removed for it, the conflict is "confirm before
+   traveling," not an exclusion.
+6. Fixed output order: Head Office, then Regional Office(s)
    (alphabetical), then Missions (alphabetical) — never dependent on
    unordered set/dict iteration, so repeated calls are identical.
 
@@ -62,8 +83,18 @@ def _to_resolved(office: Office) -> ResolvedOffice:
 
 
 def resolve_offices(
-    db: Session, district: str | None, basis: str
+    db: Session, district: str | None, basis: str, applying_from: str | None = None
 ) -> OfficeResolution:
+    """`applying_from` ("sri_lanka" | "abroad", from the intake's own
+    question — `app.engine.renewal_intake`) is the PRIMARY signal for
+    which office(s) accept the application, per the module docstring's
+    step 3. `district` alone is a defensive fallback for a caller that
+    doesn't pass `applying_from` at all (e.g. a legacy direct
+    `resolve_case` call, or `app.chat.tools.find_office`'s open-question
+    tool, which doesn't ask this question) — an empty/unknown district
+    is treated as "not yet known to be domestic," same as before this
+    question existed, but is no longer how a stated "abroad" answer gets
+    detected."""
     head = db.scalars(
         select(Office).where(Office.type == "head").order_by(Office.name)
     ).all()
@@ -71,17 +102,38 @@ def resolve_offices(
     regional = db.scalars(
         select(Office).where(Office.type == "regional").order_by(Office.name)
     ).all()
+
+    if applying_from == "abroad":
+        # Mission path (id=9 seq 2): "A Sri Lankan citizen can apply...
+        # while he is in another country, through the Sri Lankan Mission
+        # in that country" — submission happens at the Mission, never at
+        # a domestic Head or Regional Office (those only accept
+        # in-person domestic submission). id=9 also notes Missions
+        # submissions are administratively processed at the Head Office,
+        # but that isn't a citizen-facing submission point, so Head
+        # Office is excluded here too — CLAUDE.md's "the specific office
+        # that accepts their application" is the Mission, not Head
+        # Office, for this branch.
+        missions = db.scalars(
+            select(Office).where(Office.type == "mission").order_by(Office.name)
+        ).all()
+        offices = [_to_resolved(o) for o in missions]
+        return OfficeResolution(offices=offices, conflict_note=None)
+
     if district:
         regional = [
             o for o in regional if o.district and district in o.district
         ]
 
-    # Missions only when district is unknown — see the module docstring's
-    # step 3. A known Sri Lankan district rules out "applying from
-    # abroad," so Missions are never shown to a domestic applicant.
+    # Missions only when the citizen isn't affirmatively known to be
+    # domestic AND no district was even given — the defensive fallback
+    # above. A "sri_lanka" answer with a temporarily-missing district
+    # (an edge case `resolve_case`'s own intake-completeness check
+    # should prevent in practice) never shows Missions, same as a known
+    # district would — see the module docstring's step 3.
     missions = (
         []
-        if district
+        if applying_from == "sri_lanka" or district
         else db.scalars(
             select(Office).where(Office.type == "mission").order_by(Office.name)
         ).all()

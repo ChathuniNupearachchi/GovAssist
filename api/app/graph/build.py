@@ -27,7 +27,7 @@ from app.chat.agent import ToolCallRecord
 from app.chat.rephrase import rephrase_question
 from app.chat.acknowledge import build_acknowledgement
 from app.chat.session import get_transcript
-from app.engine.renewal_intake import ATTRIBUTE_BY_PROMPT, RENEWAL_QUESTIONS
+from app.engine.renewal_intake import ATTRIBUTE_BY_PROMPT
 from app.engine.types import Citation
 from app.graph.agent_nodes import agent_node, tools_node, verify_node
 from app.graph.checkpointer import get_checkpointer
@@ -42,10 +42,6 @@ from app.graph.nodes import classify_node, next_question_node, record_facts_node
 from app.graph.state import GraphState
 from app.models import Case, Question
 from app.rag.answer import RAGResponse
-
-_PROMPT_BY_ATTRIBUTE: dict[str, str] = {
-    attribute: prompt for attribute, prompt, _, _, _ in RENEWAL_QUESTIONS
-}
 
 # Same as router.py's precedent — the last two turns for rephrasing's
 # context, always ending with the citizen's current message.

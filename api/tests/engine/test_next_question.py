@@ -7,6 +7,7 @@ from app.engine.renewal_intake import ATTRIBUTE_BY_PROMPT
 def test_answering_dual_citizen_changes_next_question(renewal_service_id, db):
     answered_up_to_dual_citizen = {
         "age": "30",
+        "applying_from": "sri_lanka",
         "holds_passport": "false",
         "name_changed": "false",
     }
@@ -29,6 +30,7 @@ def test_answering_dual_citizen_changes_next_question(renewal_service_id, db):
 def test_no_further_question_once_all_relevant_answered(renewal_service_id, db):
     all_answered = {
         "age": "30",
+        "applying_from": "sri_lanka",
         "holds_passport": "false",
         "name_changed": "false",
         "dual_citizen": "false",

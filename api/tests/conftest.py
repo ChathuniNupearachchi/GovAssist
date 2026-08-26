@@ -2,13 +2,17 @@
 
 Runs against the real dev Postgres database (Docker Compose), re-seeded
 once per test session from `app.seed.phase4_renewal` (idempotent — wipes
-and rebuilds the renewal/amendment services) and
-`app.seed.phase5_approve_documents` (idempotent — re-approves the same 8
-source documents), so the suite always starts from a known-good state
-regardless of what was previously in the dev database. Engine functions
-under test are read-only against Requirement/FeeRule/Office/
-ResolutionNote/SourceDocument/DocumentChunk, so no per-test transaction
-rollback is needed.
+and rebuilds the renewal/amendment services), `app.seed.phase9_new_
+applicant` (idempotent — wipes and rebuilds passport-new, design.md
+service #2), and `app.seed.phase5_approve_documents` (idempotent —
+re-approves the same 8 source documents; passport-new's own newly
+ingested sources — id=24, the OM form set, etc. — are approved directly
+by `app.ingestion.phase9_downloads` at ingestion time, not by this
+script), so the suite always starts from a known-good state regardless
+of what was previously in the dev database. Engine functions under test
+are read-only against Requirement/FeeRule/Office/ResolutionNote/
+SourceDocument/DocumentChunk, so no per-test transaction rollback is
+needed.
 """
 
 import pytest
@@ -17,6 +21,8 @@ from app.db.session import SessionLocal
 from app.models import Service
 from app.seed.phase4_renewal import seed
 from app.seed.phase5_approve_documents import approve
+from app.seed.phase9_new_applicant import seed as seed_new_applicant
+from app.seed.phase9_lost_stolen import seed as seed_lost_stolen
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -25,6 +31,8 @@ def _seeded_database():
     try:
         seed(db)
         approve(db)
+        seed_new_applicant(db)
+        seed_lost_stolen(db)
     finally:
         db.close()
 

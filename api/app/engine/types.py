@@ -49,6 +49,25 @@ class ResolvedOffice:
 
 
 @dataclass(frozen=True)
+class ResolvedStudio:
+    id: uuid.UUID
+    name: str
+    address: str
+    phone: str | None
+    citation: Citation
+
+
+@dataclass(frozen=True)
+class StudioResolution:
+    district: str
+    studios: list[ResolvedStudio]
+    # Always present — the studio acknowledgement/receipt-submission
+    # note applies regardless of which studio the citizen chose. See
+    # app.engine.studios.RECEIPT_NOTE.
+    receipt_note: str
+
+
+@dataclass(frozen=True)
 class ConflictNote:
     note_text: str
     primary_citation: Citation

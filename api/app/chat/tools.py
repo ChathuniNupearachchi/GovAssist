@@ -147,7 +147,7 @@ def get_fee(db: Session, service: str, urgency: str, age: float | None = None) -
         return {"error": f"Unknown urgency '{urgency}' — expected 'normal' or 'urgent'."}
 
     rule_version = _approved_rule_version(db, service_code)
-    fee = resolve_fee(db, rule_version.id, basis=urgency, age=age)
+    fee = resolve_fee(db, rule_version.id, basis=urgency, answers={"age": str(age)} if age is not None else None)
     if fee is None:
         return {
             "found": False,
@@ -214,7 +214,7 @@ def resolve_case(db: Session, case_id: str) -> dict[str, Any]:
             return {"ready": False, "pending_question": pending.prompt}
 
     try:
-        resolution = _resolve_case(db, answers)
+        resolution = _resolve_case(db, answers, service_code=case.service.code)
     except IncompleteCaseError as exc:
         return {"ready": False, "pending_question": exc.pending_prompt}
 
@@ -246,7 +246,7 @@ def compare_amendment_vs_renewal(db: Session, case_id: str) -> dict[str, Any]:
 
     answers = _answers_dict(db, case.id)
     renewal_rv = _approved_rule_version(db, RENEWAL_SERVICE_CODE)
-    renewal_fee = resolve_fee(db, renewal_rv.id, basis=answers.get("service_basis", "normal"))
+    renewal_fee = resolve_fee(db, renewal_rv.id, basis=answers.get("service_basis", "normal"), answers=answers)
     renewal_requirements = resolve_requirements(db, renewal_rv.id, answers)
 
     amendment = _amendment_alternative(db)

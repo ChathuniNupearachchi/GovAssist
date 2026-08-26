@@ -81,6 +81,42 @@ def fetch_and_snapshot(url: str, extension: str) -> tuple[str, str]:
     return content_hash, relative_path
 
 
+def fetch_and_snapshot_post(url: str, body: str, extension: str) -> tuple[str, str]:
+    """POST variant of `fetch_and_snapshot` — same throttling, User-Agent,
+    and content-addressed snapshotting, for a data endpoint that only
+    responds to POST with a form-encoded body (Phase 9: the authorized-
+    studio endpoint, `json/function.php`, has no GET equivalent — see
+    phase-9-service-expansion's design.md). `body` is included in the
+    snapshot's content-addressing (the same URL POSTed with a different
+    body is a different response, unlike `fetch_and_snapshot`'s GET case
+    where the URL alone determines the response).
+    """
+    _throttle()
+    response = httpx.post(
+        url,
+        content=body,
+        headers={
+            "User-Agent": USER_AGENT,
+            "Content-Type": "application/x-www-form-urlencoded",
+            "X-Requested-With": "XMLHttpRequest",
+        },
+        timeout=30.0,
+        follow_redirects=True,
+    )
+    response.raise_for_status()
+
+    raw_bytes = response.content
+    content_hash = hashlib.sha256(raw_bytes).hexdigest()
+
+    SNAPSHOT_DIR.mkdir(parents=True, exist_ok=True)
+    absolute_path = SNAPSHOT_DIR / f"{content_hash}{extension}"
+    if not absolute_path.exists():
+        absolute_path.write_bytes(raw_bytes)
+
+    relative_path = str(absolute_path.relative_to(API_ROOT)).replace("\\", "/")
+    return content_hash, relative_path
+
+
 def resolve_snapshot_path(snapshot_path: str) -> Path:
     """Resolve a SourceDocument.snapshot_path (relative to API_ROOT) to an
     absolute filesystem path."""

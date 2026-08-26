@@ -14,12 +14,17 @@ Two notes on interpretation, recorded here rather than left implicit:
   passport") also resolves to `holds_passport = false`, coincidentally
   producing the same document set for a different real-world reason —
   both are independently hand-verified below rather than assumed equal.
-- Scenario 9 ("applying from abroad") is modeled as `district = None`.
-  Phase 4 does not model overseas-specific office routing (id=9 was
-  ingested but is out of this phase's proposal scope) — the office
-  resolver's documented behavior for an unknown district is "list every
-  Regional Office," so that is the honestly-expected result here, not an
-  overseas-specific narrowing this phase never built.
+- Scenario 9 ("applying from abroad") was originally modeled as
+  `district = None`, back when Phase 4 didn't model overseas-specific
+  office routing at all — the office resolver's behavior for an unknown
+  district was "list every Regional Office," an honest placeholder, not
+  a real Mission-routing feature. Phase 9's renewal re-verification
+  built that feature (a dedicated `applying_from` intake question,
+  `app.engine.renewal_intake`) and this scenario now exercises it
+  directly: `applying_from = "abroad"`, `district = None` (never asked
+  in the real conversational flow — see
+  `tests/qa/renewal_conversation_scenarios.py`), and offices narrowed to
+  the Mission only, per id=9 seq 2.
 """
 
 BASE = {
@@ -30,6 +35,10 @@ BASE = {
     "profession": "",
     "buddhist_priest": "false",
     "service_basis": "normal",
+    # Every other scenario is domestic by default — see scenario 9 (the
+    # only "abroad" scenario) and 24 (an explicit-domestic regression)
+    # for the two applying_from branches Phase 9 added.
+    "applying_from": "sri_lanka",
 }
 
 FINGERPRINTS_LABEL = (
@@ -37,6 +46,11 @@ FINGERPRINTS_LABEL = (
     "Office (required for applicants aged 16 to 60)"
 )
 APPLICATION_FORM_LABEL = "Completed application form K-35A"
+# The overseas counterpart — gated on applying_from == "abroad", swapped
+# in for APPLICATION_FORM_LABEL rather than added alongside it (see
+# scenario 9 below and `app.seed.phase4_renewal`'s two application-form
+# Requirements).
+OVERSEAS_APPLICATION_FORM_LABEL = "Completed Overseas Missions Passport Application form"
 STANDARD_CORE = {
     "Photo studio acknowledgement",
     APPLICATION_FORM_LABEL,
@@ -156,14 +170,16 @@ GOLDEN_SCENARIOS = [
     },
     {
         "name": "9. Applying from abroad",
-        "answers": {**BASE, "age": "30", "district": None},
-        "expected_labels": STANDARD_CORE | {CURRENT_PASSPORT_LABEL},
+        "answers": {**BASE, "age": "30", "district": None, "applying_from": "abroad"},
+        # STANDARD_CORE's own APPLICATION_FORM_LABEL is domestic-only as
+        # of the Downloads-page re-verification — swapped for the
+        # Overseas Missions form here, not added alongside it.
+        "expected_labels": (STANDARD_CORE - {APPLICATION_FORM_LABEL})
+        | {CURRENT_PASSPORT_LABEL, OVERSEAS_APPLICATION_FORM_LABEL},
         "expected_fee": 10000.00,
-        "expected_offices": {
-            "Head Office", "Kandy Regional Office", "Matara Regional Office",
-            "Vavuniya Regional Office", "Kurunegala Regional Office",
-            "Jaffna Regional Office", "Overseas Sri Lankan Missions",
-        },
+        # Mission path (id=9 seq 2), not "every office since district is
+        # unknown" — see the module docstring's note on this scenario.
+        "expected_offices": {"Overseas Sri Lankan Missions"},
         "expect_conflict_note": False,
         "expect_amendment_alternative": False,
         "expect_scope_gate": False,
@@ -367,6 +383,23 @@ GOLDEN_SCENARIOS = [
         "expect_amendment_alternative": False,
         "expect_scope_gate": True,
     },
+    # -- 24: added for Phase 9's renewal re-verification, alongside
+    # scenario 9 above — the two `applying_from` branches (see
+    # `app.engine.renewal_intake`). Scenario 9 is "abroad"; every other
+    # scenario in this file already defaults to "sri_lanka" via BASE, but
+    # this one states it explicitly so the domestic branch has its own
+    # named regression the way the abroad branch does, rather than only
+    # being implicit in every pre-existing scenario's default.
+    {
+        "name": "24. Explicit applying_from=sri_lanka — domestic branch (regression)",
+        "answers": {**BASE, "age": "30", "district": "Kandy", "applying_from": "sri_lanka"},
+        "expected_labels": STANDARD_CORE | {CURRENT_PASSPORT_LABEL},
+        "expected_fee": 10000.00,
+        "expected_offices": {"Head Office", "Kandy Regional Office"},
+        "expect_conflict_note": False,
+        "expect_amendment_alternative": False,
+        "expect_scope_gate": False,
+    },
 ]
 
-assert len(GOLDEN_SCENARIOS) == 23, "10 original (BACKEND_PLAN.md Phase 4.7) + 10 added for langgraph-orchestration-branch + 3 for the manual-QA bug-fix round"
+assert len(GOLDEN_SCENARIOS) == 24, "10 original (BACKEND_PLAN.md Phase 4.7) + 10 added for langgraph-orchestration-branch + 3 for the manual-QA bug-fix round + 1 for Phase 9's applying_from domestic-branch regression"

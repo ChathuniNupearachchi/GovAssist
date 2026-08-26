@@ -143,13 +143,28 @@ def _fresh_device_ref(scenario: Scenario) -> str:
     return f"qa-{scenario.category}-{scenario.index}-{uuid.uuid4().hex[:8]}"
 
 
+# Paced between turns (not just judge calls, see _judge_turn) — a real
+# citizen sends messages at human speed; the harness driving dozens of
+# scenarios back-to-back is what actually triggers Gemini free-tier rate
+# limiting on classify/rephrase/acknowledge, confirmed directly: a
+# full-speed category-B run degraded several genuine situations to the
+# classifier's low-confidence fallback ("I don't have that information"
+# for "expired last year" / "applying from Kandy" / "applying from
+# Dubai" — situations that classify correctly in isolation), which is a
+# harness-throughput artifact, not a real per-citizen-turn defect.
+_SECONDS_BETWEEN_TURNS = 2.0
+
+
 def run_scenario(client: TestClient, scenario: Scenario) -> ScenarioResult:
+    import time
+
     device_ref = _fresh_device_ref(scenario)
     result = ScenarioResult(scenario=scenario, device_ref=device_ref, case_id=None)
     case_id: str | None = None
 
     try:
         for message in scenario.turns:
+            time.sleep(_SECONDS_BETWEEN_TURNS)
             payload = {"message": message, "device_ref": device_ref}
             if case_id is not None:
                 payload = {"message": message, "case_id": case_id}
@@ -236,6 +251,13 @@ chat assistant from an ORDINARY CITIZEN's perspective — not whether the answer
 technically correct, but whether a person using this outdoors on their phone, possibly \
 anxious about a government process, would find it usable.
 
+You may be given the conversation so far as context. A question the assistant asks — \
+even one that seems unrelated to the citizen's most recent message — is CORRECT and \
+expected if it is simply the next step in a multi-question intake the citizen already \
+started (e.g. asking age right after the citizen described their situation is normal \
+intake, not a non-sequitur). Judge the turn in that context, not as if it were an \
+isolated exchange.
+
 Judge:
 - understandable: would an ordinary citizen understand this?
 - answers_what_was_asked: does it answer what was actually asked (or, if it's a \
@@ -263,16 +285,19 @@ _SECONDS_BETWEEN_JUDGE_CALLS = 3.0
 _JUDGE_RETRY_BACKOFF_S = 15.0
 
 
-def _judge_turn(citizen_message: str, assistant_reply: str) -> TurnVerdict:
+def _judge_turn(citizen_message: str, assistant_reply: str, prior_turns: list[str] = ()) -> TurnVerdict:
     import time
 
     time.sleep(_SECONDS_BETWEEN_JUDGE_CALLS)
+    context = ""
+    if prior_turns:
+        context = "Conversation so far (citizen, then assistant, alternating):\n" + "\n".join(prior_turns) + "\n\n"
     for attempt in range(2):
         try:
             return structured_completion(
                 "qa_judge",
                 system=_JUDGE_SYSTEM_PROMPT,
-                user=f'Citizen said: "{citizen_message}"\n\nAssistant replied: "{assistant_reply}"',
+                user=f'{context}Citizen said: "{citizen_message}"\n\nAssistant replied: "{assistant_reply}"',
                 response_model=TurnVerdict,
                 max_tokens=512,
             )
@@ -357,11 +382,228 @@ def check_correction_updates_recorded_fact(client: TestClient) -> tuple[bool, st
 
 
 # --------------------------------------------------------------------
+# 4.5. Full end-to-end renewal conversations — opening message through
+# a resolved plan, asserted against it (not just the first reply).
+#
+# Answers gap this closes: `run_scenario` above only sends
+# `scenario.turns` from questions.txt and calls resolve ONLY if the
+# LAST turn already left no question pending — true for zero of
+# questions.txt's category-A openers (each is 1-2 natural-language
+# turns; renewal intake needs ~9 answered questions). Every category-A
+# scenario there stops after the opening reply — it tests whether the
+# classifier/RAG path produces a sane-looking first message, not
+# whether the resolved plan is correct. This section drives a REAL
+# intake to completion and asserts the plan itself.
+# --------------------------------------------------------------------
+
+from app.engine.renewal_intake import ATTRIBUTE_BY_PROMPT  # noqa: E402
+
+
+@dataclass
+class ConversationDriveResult:
+    scenario_name: str
+    case_id: str | None
+    opening_reply: str | None
+    turns_taken: int
+    stopped_reason: str | None  # None == reached resolution successfully
+    resolve_status_code: int | None
+    resolution: dict | None
+    # Every attribute this conversation was actually asked about, in
+    # order — lets a caller assert a question was (or wasn't) reached at
+    # all, not just that the final resolution came out right. Added for
+    # Phase 9's applying_from work: "district" must never appear here
+    # for an overseas applicant, regardless of what the final office
+    # resolution looks like.
+    attributes_asked: list[str] = field(default_factory=list)
+
+
+def drive_conversation_to_resolution(
+    client: TestClient, opening_message: str, answers: dict[str, str], max_steps: int = 20
+) -> ConversationDriveResult:
+    """Sends `opening_message`, then answers every follow-up question
+    the system actually asks — looked up by attribute in `answers`, the
+    same dict `tests/engine/test_golden.py` already verifies
+    `resolve_case` against directly — until no question remains
+    pending, then calls `POST /case/{id}/resolve`. Stops early (with a
+    reason, not a silent partial result) if a pending question's
+    attribute has no entry in `answers`, or `max_steps` is exceeded."""
+    device_ref = f"qa-conv-{uuid.uuid4().hex[:8]}"
+    attributes_asked: list[str] = []
+    r = client.post("/chat/message", json={"message": opening_message, "device_ref": device_ref})
+    if r.status_code != 200:
+        return ConversationDriveResult(
+            scenario_name="", case_id=None, opening_reply=None, turns_taken=0,
+            stopped_reason=f"opening message returned {r.status_code}",
+            resolve_status_code=None, resolution=None, attributes_asked=attributes_asked,
+        )
+    body = r.json()
+    case_id = body["case_id"]
+    opening_reply = (body.get("answer") or {}).get("text")
+    next_q = body.get("next_question")
+    turns = 1
+
+    while next_q is not None:
+        if turns > max_steps:
+            return ConversationDriveResult(
+                scenario_name="", case_id=case_id, opening_reply=opening_reply, turns_taken=turns,
+                stopped_reason=f"exceeded {max_steps} turns, still pending {next_q.get('prompt')!r}",
+                resolve_status_code=None, resolution=None, attributes_asked=attributes_asked,
+            )
+        attribute = ATTRIBUTE_BY_PROMPT.get(next_q["prompt"])
+        if attribute is None or attribute not in answers:
+            return ConversationDriveResult(
+                scenario_name="", case_id=case_id, opening_reply=opening_reply, turns_taken=turns,
+                stopped_reason=f"no scripted answer for pending attribute {attribute!r} "
+                f"(question: {next_q['prompt']!r})",
+                resolve_status_code=None, resolution=None, attributes_asked=attributes_asked,
+            )
+        attributes_asked.append(attribute)
+        r = client.post("/chat/message", json={"message": answers[attribute], "case_id": case_id})
+        turns += 1
+        if r.status_code != 200:
+            return ConversationDriveResult(
+                scenario_name="", case_id=case_id, opening_reply=opening_reply, turns_taken=turns,
+                stopped_reason=f"turn {turns} (answering {attribute}) returned {r.status_code}",
+                resolve_status_code=None, resolution=None, attributes_asked=attributes_asked,
+            )
+        next_q = r.json().get("next_question")
+
+    resolve_r = client.post(f"/case/{case_id}/resolve")
+    resolution = resolve_r.json() if resolve_r.status_code == 200 else None
+    return ConversationDriveResult(
+        scenario_name="", case_id=case_id, opening_reply=opening_reply, turns_taken=turns,
+        stopped_reason=None, resolve_status_code=resolve_r.status_code, resolution=resolution,
+        attributes_asked=attributes_asked,
+    )
+
+
+def assert_resolution_matches_golden(resolution: dict, golden_scenario: dict) -> list[str]:
+    """Checks the resolved plan against the SAME expected fields
+    `tests/engine/test_golden.py` verifies `resolve_case` against
+    directly. Returns a list of mismatch descriptions — empty means the
+    plan matches exactly. Also checks every requirement and the fee
+    carries a real citation (source_document_id + source_url) — offices
+    are not individually cited in this data model (only a conflict note
+    is, when present), so that's checked separately, not asserted here."""
+    problems = []
+
+    if golden_scenario["expect_scope_gate"]:
+        if not resolution.get("scope_gate"):
+            problems.append("expected a scope_gate response, got a full plan")
+        return problems
+
+    if resolution.get("scope_gate"):
+        problems.append(f"unexpected scope_gate: {resolution['scope_gate']}")
+        return problems
+
+    actual_labels = {r["label"] for r in resolution.get("requirements", [])}
+    if actual_labels != golden_scenario["expected_labels"]:
+        problems.append(
+            f"requirement labels mismatch: missing {golden_scenario['expected_labels'] - actual_labels}, "
+            f"unexpected {actual_labels - golden_scenario['expected_labels']}"
+        )
+
+    fee = resolution.get("fee") or {}
+    if golden_scenario["expected_fee"] is not None and float(fee.get("base_amount", -1)) != golden_scenario["expected_fee"]:
+        problems.append(f"fee mismatch: expected {golden_scenario['expected_fee']}, got {fee.get('base_amount')}")
+
+    actual_offices = {o["name"] for o in (resolution.get("offices") or {}).get("offices", [])}
+    if actual_offices != golden_scenario["expected_offices"]:
+        problems.append(
+            f"offices mismatch: expected {golden_scenario['expected_offices']}, got {actual_offices}"
+        )
+
+    has_conflict_note = bool((resolution.get("offices") or {}).get("conflict_note"))
+    if has_conflict_note != golden_scenario["expect_conflict_note"]:
+        problems.append(f"conflict_note presence mismatch: expected {golden_scenario['expect_conflict_note']}")
+
+    has_amendment_alt = bool(resolution.get("amendment_alternative"))
+    if has_amendment_alt != golden_scenario["expect_amendment_alternative"]:
+        problems.append(f"amendment_alternative presence mismatch: expected {golden_scenario['expect_amendment_alternative']}")
+
+    # Every requirement, and the fee, must carry a real citation.
+    for r in resolution.get("requirements", []):
+        citation = r.get("citation") or {}
+        if not citation.get("source_document_id") or not citation.get("source_url"):
+            problems.append(f"requirement {r['label']!r} has no citation: {citation}")
+    if fee and (not (fee.get("citation") or {}).get("source_document_id")):
+        problems.append(f"fee has no citation: {fee.get('citation')}")
+
+    # Prerequisites in the right order — every 'prerequisite'-kind
+    # requirement must sequence before every 'document'-kind one, per
+    # this project's own Requirement.sequence convention (prerequisites
+    # 1-9, documents 10+ — see app/seed/phase4_renewal.py).
+    prereq_sequences = [r["sequence"] for r in resolution.get("requirements", []) if r["kind"] == "prerequisite"]
+    document_sequences = [r["sequence"] for r in resolution.get("requirements", []) if r["kind"] == "document"]
+    if prereq_sequences and document_sequences and max(prereq_sequences) >= min(document_sequences):
+        problems.append(
+            f"prerequisite sequence(s) {prereq_sequences} not all before document sequence(s) {document_sequences}"
+        )
+
+    return problems
+
+
+def run_renewal_conversations(client: TestClient) -> list[dict]:
+    """Runs every scenario in RENEWAL_CONVERSATIONS end to end and
+    reports, per scenario: whether it reached a resolved plan or
+    stopped early (and why), plus any mismatch against the golden
+    expected values."""
+    from tests.qa.renewal_conversation_scenarios import RENEWAL_CONVERSATIONS
+
+    reports = []
+    for scenario in RENEWAL_CONVERSATIONS:
+        drive = drive_conversation_to_resolution(client, scenario["opening_message"], scenario["answers"])
+        entry = {
+            "name": scenario["name"],
+            "opening_message": scenario["opening_message"],
+            "opening_reply": drive.opening_reply,
+            "turns_taken": drive.turns_taken,
+            "reached_resolution": drive.stopped_reason is None and drive.resolution is not None,
+            "stopped_reason": drive.stopped_reason,
+            "resolve_status_code": drive.resolve_status_code,
+            "mismatches": [],
+        }
+        if drive.resolution is not None:
+            entry["mismatches"] = assert_resolution_matches_golden(drive.resolution, scenario)
+        # Phase 9: an overseas applicant (applying_from == "abroad") must
+        # never be asked which Sri Lankan district they're in — checked
+        # against the actual turn-by-turn conversation, not just the
+        # final resolution, so a resolver that happens to produce the
+        # right offices anyway wouldn't mask the question still being
+        # asked.
+        if scenario["answers"].get("applying_from") == "abroad" and "district" in drive.attributes_asked:
+            entry["mismatches"].append(
+                "overseas applicant (applying_from=abroad) was asked the district question — "
+                f"attributes asked: {drive.attributes_asked}"
+            )
+        reports.append(entry)
+        if drive.case_id is not None:
+            result = ScenarioResult(
+                scenario=Scenario("A", "Renew passport (full conversation)", 0, []),
+                device_ref="", case_id=drive.case_id,
+            )
+            cleanup_scenario(result)
+    return reports
+
+
+# --------------------------------------------------------------------
 # 5. Orchestration + report
 # --------------------------------------------------------------------
 
 
 def run_all(category_filter: str | None = None) -> dict:
+    # Same (message, pending_question) pair recurs across questions.txt
+    # (multiple scenarios phrase the same intent) and across repeated
+    # harness runs — classify() is a pure function of these two
+    # arguments, so re-classifying an identical pair wastes quota with
+    # no behavior difference. Off by default in production (see
+    # app.chat.classifier's own docstring on why); on for every harness
+    # run. Set here, not only in __main__, so pytest-driven runs
+    # (test_qa_harness.py) get it too.
+    import os
+
+    os.environ["CLASSIFY_CACHE_ENABLED"] = "true"
+
     scenarios = parse_questions()
     if category_filter:
         scenarios = [s for s in scenarios if s.category in category_filter]
@@ -375,9 +617,13 @@ def run_all(category_filter: str | None = None) -> dict:
         scenario_ok = result.error is None and all(t.status_code == 200 for t in result.turns)
 
         turn_reports = []
+        history: list[str] = []
         for turn in result.turns:
             reply = _assistant_reply_text(turn)
-            verdict = _judge_turn(turn.message, reply) if reply else None
+            verdict = _judge_turn(turn.message, reply, prior_turns=list(history)) if reply else None
+            history.append(f"Citizen: {turn.message}")
+            if reply:
+                history.append(f"Assistant: {reply}")
             if verdict is not None and not verdict.overall_ok:
                 flagged.append(
                     {
@@ -456,7 +702,35 @@ def print_report(report: dict) -> None:
     print(f"\nFull report written to {REPORT_PATH}")
 
 
+def print_conversation_report(reports: list[dict]) -> None:
+    reached = [r for r in reports if r["reached_resolution"]]
+    stopped = [r for r in reports if not r["reached_resolution"]]
+    mismatched = [r for r in reached if r["mismatches"]]
+
+    print(f"Reached a resolved plan: {len(reached)}/{len(reports)}")
+    print(f"Stopped before resolution: {len(stopped)}")
+    for r in stopped:
+        print(f"  [{r['name']}] stopped after {r['turns_taken']} turn(s): {r['stopped_reason']}")
+
+    print(f"\nResolved but mismatched against the golden expected values: {len(mismatched)}")
+    for r in mismatched:
+        print(f"  [{r['name']}]")
+        for problem in r["mismatches"]:
+            print(f"    - {problem}")
+
+    if not stopped and not mismatched:
+        print("\nEvery scenario reached a resolved plan matching its golden expected values exactly.")
+
+
 if __name__ == "__main__":
-    category_filter = sys.argv[1] if len(sys.argv) > 1 else None
-    report = run_all(category_filter)
-    print_report(report)
+    if len(sys.argv) > 1 and sys.argv[1] == "renewal-conversations":
+        client = TestClient(app)
+        reports = run_renewal_conversations(client)
+        print_conversation_report(reports)
+        json_path = Path(__file__).parent / "renewal_conversation_report.json"
+        json_path.write_text(json.dumps(reports, indent=2, default=str), encoding="utf-8")
+        print(f"\nFull report written to {json_path}")
+    else:
+        category_filter = sys.argv[1] if len(sys.argv) > 1 else None
+        report = run_all(category_filter)
+        print_report(report)

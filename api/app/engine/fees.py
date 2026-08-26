@@ -1,17 +1,22 @@
 """4.3 Fee calculator.
 
-`age` (task: langgraph-orchestration-branch's tool-selection-instability
-fix) lets a fee rule set express an age-tiered fee — e.g. the renewal
-service's below-16 tier (LKR 3,000/9,000, source: pages_e.php?id=8's
-"processing fees for All-Countries Passport (below 16 years of age)"
-table) versus the adult tier (LKR 10,000/20,000) for the same `basis`.
-Previously ungated: `get_fee` had no way to select the below-16 tier at
-all, so an agent question about a minor's fee could only ever surface
-the adult amount — confirmed as a real gap, not a hypothetical one, by
-a golden-set scenario built specifically to surface it. Age-conditional
-fee rules use `FeeRule.condition_id` (already in the Phase 2 schema,
-previously unused for this purpose) linking to the same age Condition
-the fingerprints requirement already reuses — no new column.
+`answers` (task: langgraph-orchestration-branch's tool-selection-
+instability fix, generalized for lost/stolen's penalty tiers — Phase 9
+service #3) lets a fee rule set express a conditional fee tier — e.g.
+the renewal service's below-16 tier (LKR 3,000/9,000, source:
+pages_e.php?id=8's "processing fees for All-Countries Passport (below
+16 years of age)" table) versus the adult tier (LKR 10,000/20,000) for
+the same `basis`, or `passport-lost-stolen`'s combined base-fee-plus-
+penalty totals gated on how long ago the lost passport was issued
+(`app.seed.phase9_lost_stolen`). Originally age-only (`get_fee` had no
+way to select the below-16 tier at all, so an agent question about a
+minor's fee could only ever surface the adult amount — confirmed as a
+real gap by a golden-set scenario built specifically to surface it);
+generalized from a single `age` value to the citizen's full `answers`
+dict so a `FeeRule.condition_id` can gate on ANY attribute, not only
+age — lost/stolen's penalty tiers need this. Conditional fee rules use
+`FeeRule.condition_id` (already in the Phase 2 schema) linking to a
+Condition the same way a Requirement or Question does — no new column.
 """
 
 from __future__ import annotations
@@ -27,15 +32,20 @@ from app.models import Condition, FeeRule, RuleVersion
 
 
 def resolve_fee(
-    db: Session, rule_version_id: uuid.UUID, basis: str, age: float | str | None = None
+    db: Session, rule_version_id: uuid.UUID, basis: str, answers: dict[str, str] | None = None
 ) -> ResolvedFee | None:
     """Return the fee rule matching the rule version, basis (normal/
     urgent), and — when the rule set has more than one fee rule for that
-    basis — the citizen's age tier. A `FeeRule` with a linked
-    `Condition` (e.g. age < 16) applies only when `age` satisfies it;
-    the unconditional `FeeRule` (no `condition_id`) is the default,
-    used when `age` is unknown or no conditional rule matches. Returns
-    None if no matching fee rule exists at all."""
+    basis — the citizen's answers. A `FeeRule` with a linked `Condition`
+    (e.g. age < 16, or lost/stolen's penalty-tier attribute) applies
+    only when `answers` satisfies it; the unconditional `FeeRule` (no
+    `condition_id`) is the default, used when `answers` is None/empty or
+    no conditional rule matches. Candidates are evaluated in `id` order
+    (insertion order for this project's own seed scripts) — the FIRST
+    matching conditional rule wins, so a rule set relying on more than
+    one simultaneously-matchable conditional tier for the same `basis`
+    needs its own tie-break, not assumed here. Returns None if no
+    matching fee rule exists at all."""
     rule_version = db.get(RuleVersion, rule_version_id)
     candidates = db.scalars(
         select(FeeRule).where(
@@ -46,8 +56,7 @@ def resolve_fee(
         return None
 
     fee_rule = None
-    if age is not None:
-        answers = {"age": str(age)}
+    if answers:
         for candidate in candidates:
             if candidate.condition_id is None:
                 continue

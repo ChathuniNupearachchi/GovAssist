@@ -77,8 +77,11 @@ def test_every_resolved_plan_includes_birth_certificate_and_nic(db, scenario):
 )
 def test_every_resolved_plan_includes_the_application_form(db, scenario):
     """A citizen must never get a document checklist with no form to
-    submit them with — the K-35A application form requirement is
-    unconditional, present in every branch (standard or dual-citizen)."""
+    submit them with — exactly one application-form requirement is
+    present in every branch (standard, dual-citizen, or overseas), and
+    it's the right variant for `applying_from` (Downloads-page
+    re-verification: domestic K-35A vs. the Overseas Missions form —
+    see `app.seed.phase4_renewal`)."""
     if scenario["expect_scope_gate"]:
         pytest.skip("scope-gated case produces no requirement set")
 
@@ -94,5 +97,10 @@ def test_every_resolved_plan_includes_the_application_form(db, scenario):
         f"{scenario['name']}: application form requirement has no resources"
     )
     resource_urls = {r["url"] for r in form_requirements[0].resources}
-    assert "passport_application.pdf" in "".join(resource_urls)
-    assert "instructions_english_td.pdf" in "".join(resource_urls)
+    joined_urls = "".join(resource_urls)
+    if scenario["answers"].get("applying_from") == "abroad":
+        assert "new_om_application_form.pdf" in joined_urls
+    else:
+        assert "passport_application.pdf" in joined_urls
+        assert "application.pdf" in joined_urls
+        assert "instructions_english_td.pdf" in joined_urls

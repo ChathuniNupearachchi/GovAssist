@@ -18,7 +18,7 @@ from sqlalchemy.orm import Session
 from app.chat.deterministic import is_greeting, try_deterministic_match
 from app.chat.classifier import classify as _classify
 from app.engine.next_question import next_question as _next_question
-from app.engine.renewal_intake import ATTRIBUTE_BY_PROMPT, RENEWAL_QUESTIONS
+from app.engine.renewal_intake import ATTRIBUTE_BY_PROMPT, PROMPT_BY_ATTRIBUTE
 from app.engine.resolver import SCOPE_GATE_UNDER_16, resolve_case as _resolve_case
 from app.engine.types import (
     AmendmentAlternative,
@@ -33,9 +33,11 @@ from app.graph.state import GraphState
 from app.models import Case, CaseAnswer, Question
 from app.observability.tracing import traced_node
 
-_PROMPT_BY_ATTRIBUTE: dict[str, str] = {
-    attribute: prompt for attribute, prompt, _, _, _ in RENEWAL_QUESTIONS
-}
+# Covers every service's questions (renewal, new-applicant, lost/stolen)
+# — see app.engine.renewal_intake.PROMPT_BY_ATTRIBUTE's own docstring
+# for why this used to be RENEWAL_QUESTIONS-only and silently dropped a
+# fact extracted for an attribute only a non-renewal service asks.
+_PROMPT_BY_ATTRIBUTE = PROMPT_BY_ATTRIBUTE
 
 # Bug fix (manual QA bug #3): short, plain-language, no jargon — states
 # what GovAssist does and what to try next, without asking anything or
@@ -316,7 +318,7 @@ def resolve_node(state: GraphState, config: RunnableConfig) -> dict[str, Any]:
         }
 
     try:
-        resolution = _resolve_case(db, answers)
+        resolution = _resolve_case(db, answers, service_code=case.service.code)
     except IncompleteCaseError as exc:
         return {"resolution": {"ready": False, "pending_question": exc.pending_prompt}}
 

@@ -6,6 +6,7 @@ from app.engine.resolver import resolve_case
 
 BASE_ANSWERS = {
     "age": "30",
+    "applying_from": "sri_lanka",
     "holds_passport": "false",
     "name_changed": "false",
     "dual_citizen": "false",

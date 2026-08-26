@@ -27,6 +27,7 @@ from app.models import Office, Question
 
 BASE_UP_TO_PROFESSION = {
     "age": "30",
+    "applying_from": "sri_lanka",
     "holds_passport": "true",
     "name_changed": "false",
     "dual_citizen": "false",
@@ -129,7 +130,7 @@ def test_divisional_secretariat_never_returned_as_an_office(db):
 
 def test_resolved_plan_never_mentions_a_divisional_secretariat_as_submission(db):
     answers = {
-        "age": "30", "holds_passport": "true", "name_changed": "false",
+        "age": "30", "applying_from": "sri_lanka", "holds_passport": "true", "name_changed": "false",
         "dual_citizen": "false", "section_19_2": "false", "profession": "",
         "buddhist_priest": "false", "district": "Kandy", "service_basis": "normal",
     }
