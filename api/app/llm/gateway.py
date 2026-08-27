@@ -104,20 +104,38 @@ _GEMINI_API_KEYS = [
 ]
 
 # Cross-provider fallback per job, tried once every Gemini key above is
-# rate-limited. Groq's free tier for classify/rephrase by default (a
-# different company's infrastructure — a Gemini-wide 429 doesn't take
-# this down too); empty for any job not listed means no fallback,
-# matching this module's original "raise straight through" behavior.
+# rate-limited. Groq's free tier for rephrase by default (a different
+# company's infrastructure — a Gemini-wide 429 doesn't take this down
+# too); empty for any job not listed means no fallback, matching this
+# module's original "raise straight through" behavior. `classify` keeps
+# a fallback too, in case Claude itself ever rate-limits — harmless
+# safety net, not the primary path.
 _DEFAULT_FALLBACK_MODEL_BY_JOB = {
     "classify": "groq/llama-3.3-70b-versatile",
     "rephrase": "groq/llama-3.3-70b-versatile",
 }
 
+# Per-job default overrides to `DEFAULT_MODEL` — CRITICAL BUG FIX
+# (production incident): `classify` sits on the citizen-facing critical
+# path (it's the only thing that turns "I am 20 years old" into a
+# recorded fact once the deterministic pass doesn't match), so a free
+# tier's quota exhaustion there produces a silent quality failure, not
+# a harmless degraded fallback the way it does for rephrase/acknowledge
+# (a degraded rephrase falls back to canonical text; a degraded
+# acknowledgement is just omitted). Moved to Claude Haiku — reliable,
+# and fractions of a cent per turn. `rephrase`/`acknowledge` stay on
+# `DEFAULT_MODEL` (Gemini) unchanged; still overridable per job via
+# `LLM_MODEL_<JOB>`.
+_DEFAULT_MODEL_BY_JOB = {
+    "classify": "claude-haiku-4-5",
+}
+
 
 def model_for(job: str) -> str:
     """Resolves the model to use for `job` — `LLM_MODEL_<JOB>` (e.g.
-    `LLM_MODEL_CLASSIFY`) if set, else `DEFAULT_MODEL`."""
-    return os.environ.get(f"LLM_MODEL_{job.upper()}", DEFAULT_MODEL)
+    `LLM_MODEL_CLASSIFY`) if set, else this module's per-job default
+    (see `_DEFAULT_MODEL_BY_JOB`), else `DEFAULT_MODEL`."""
+    return os.environ.get(f"LLM_MODEL_{job.upper()}", _DEFAULT_MODEL_BY_JOB.get(job, DEFAULT_MODEL))
 
 
 def fallback_model_for(job: str) -> str | None:

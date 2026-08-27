@@ -1,6 +1,7 @@
 export { Button } from "./Button";
 export { Card } from "./Card";
 export { ChecklistItem } from "./ChecklistItem";
+export { PlanHeader } from "./PlanHeader";
 export { DepartmentCard } from "./DepartmentCard";
 export { StatusPill } from "./StatusPill";
 export { SourceCitation } from "./SourceCitation";

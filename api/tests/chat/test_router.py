@@ -19,7 +19,7 @@ from types import SimpleNamespace
 import pytest
 
 from app.chat import router as chat_router
-from app.chat.classifier import Classification, ExtractedFacts
+from app.chat.classifier import Classification, ExtractedFact
 from app.engine.renewal_intake import RENEWAL_QUESTIONS
 from app.graph import agent_nodes, nodes as graph_nodes
 from app.models import Case, CaseAnswer
@@ -113,7 +113,7 @@ def test_combined_message_records_fact_and_answers_question_in_one_call(
 ):
     fake_classification = Classification(
         intent="situation",
-        extracted=ExtractedFacts(name_changed="true"),
+        extracted=[ExtractedFact(attribute="name_changed", value="true")],
         contains_question=True,
         confidence=0.95,
     )
@@ -134,28 +134,64 @@ def test_combined_message_records_fact_and_answers_question_in_one_call(
     assert recorded[0].value == "true"
 
 
-def test_low_confidence_leaves_pending_question_unanswered(db, case, monkeypatch):
-    # classify() already applies the low-confidence override internally;
+def test_low_confidence_while_pending_reasks_without_calling_agent(db, case, monkeypatch):
+    # CRITICAL BUG FIX (production incident): classify() already applies
+    # the low-confidence override internally, setting `unclear=True` —
     # here we simulate its post-override output directly to test the
-    # router's handling of it.
+    # router's handling of it. An unclear result while a question is
+    # pending must re-ask plainly and must NEVER invoke the agent (the
+    # old behavior routed this to the agent, which had nothing to
+    # answer and returned "I don't have that information" — exactly the
+    # citizen-facing bug this fixes).
     low_confidence_result = Classification(
         intent="question",
-        extracted=ExtractedFacts(),
+        extracted=[],
         contains_question=True,
         confidence=0.2,
+        unclear=True,
     )
     monkeypatch.setattr(graph_nodes, "_classify", lambda *a, **k: low_confidence_result)
-    # No tool call at all, twice in a row (the agent node's one
-    # "try a tool before giving up" nudge, then the real give-up) — the
-    # explicit no-relevant-match outcome.
-    _mock_agent_client(monkeypatch, _text_response(), _text_response())
+
+    def _fail_if_called():
+        raise AssertionError("the agent must not be called for an unclear result while a question is pending")
+
+    monkeypatch.setattr(agent_nodes.anthropic, "Anthropic", _fail_if_called)
 
     outcome = chat_router.handle_message(db, case, "hmm, not totally sure")
     db.commit()
 
     recorded = db.query(CaseAnswer).filter(CaseAnswer.case_id == case.id).all()
     assert len(recorded) == 0
+    # next_question_node suppresses the separate next_question field
+    # here since the reask text already restates the pending question.
+    assert outcome.next_pending_question is None
+    assert outcome.rag_response is not None
+    assert outcome.rag_response.grounded is True
+    assert "didn't catch that" in outcome.rag_response.text
+    assert FIRST_QUESTION_PROMPT in outcome.rag_response.text
+
+
+def test_genuine_question_while_pending_still_answers_via_agent(db, case, monkeypatch):
+    # Preserved behavior (explicitly required to survive the fix above):
+    # a confidently-detected genuine question mid-intake still answers
+    # via the agent, then the same pending question is asked again.
+    confident_question = Classification(
+        intent="question",
+        extracted=[],
+        contains_question=True,
+        confidence=0.95,
+        unclear=False,
+    )
+    monkeypatch.setattr(graph_nodes, "_classify", lambda *a, **k: confident_question)
+    _mock_agent_client(monkeypatch, _submit_answer_response("Normal service takes 30 working days; urgent is faster."))
+
+    outcome = chat_router.handle_message(db, case, "what's the difference between normal and urgent")
+    db.commit()
+
+    recorded = db.query(CaseAnswer).filter(CaseAnswer.case_id == case.id).all()
+    assert len(recorded) == 0
+    assert outcome.rag_response is not None
+    assert outcome.rag_response.grounded is True
+    assert outcome.rag_response.text == "Normal service takes 30 working days; urgent is faster."
     assert outcome.next_pending_question is not None
     assert outcome.next_pending_question.prompt == FIRST_QUESTION_PROMPT
-    assert outcome.rag_response is not None
-    assert outcome.rag_response.grounded is False

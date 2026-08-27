@@ -27,6 +27,9 @@ RENEWAL_SERVICE_CODE = "passport-renewal"
 AMENDMENT_SERVICE_CODE = "passport-amendment"
 NEW_APPLICANT_SERVICE_CODE = "passport-new"
 LOST_STOLEN_SERVICE_CODE = "passport-lost-stolen"
+UNDER_16_SERVICE_CODE = "passport-under-16"
+CHILD_DELETION_SERVICE_CODE = "passport-child-deletion"
+EMERGENCY_CERTIFICATE_SERVICE_CODE = "emergency-certificate"
 SCOPE_GATE_UNDER_16 = (
     "GovAssist does not yet support passport applications for applicants "
     "under 16. Under-16 applications have their own document set, "
@@ -52,9 +55,19 @@ def _approved_rule_version(db: Session, service_code: str) -> RuleVersion:
 
 
 def _amendment_alternative(db: Session) -> AmendmentAlternative:
+    """Surfaced only when `name_changed == "true"` (see `resolve_case`
+    below) — the alternative being offered is specifically "amend your
+    existing passport's name instead of renewing," so this always
+    resolves the Change of Name alteration type. Phase 9's amendment
+    implementation made every non-Change-of-Name Requirement
+    conditional on `alteration_type` (see `app.seed.phase9_amendment`);
+    passing this explicitly (rather than the previous `answers={}`)
+    keeps this alternative's Requirement set from silently going empty
+    now that Change of Name's own documents are gated too."""
     amendment_rv = _approved_rule_version(db, AMENDMENT_SERVICE_CODE)
-    fee = resolve_fee(db, amendment_rv.id, basis="normal")
-    requirements = resolve_requirements(db, amendment_rv.id, answers={})
+    answers = {"alteration_type": "change_of_name"}
+    fee = resolve_fee(db, amendment_rv.id, basis="normal", answers=answers)
+    requirements = resolve_requirements(db, amendment_rv.id, answers=answers)
     return AmendmentAlternative(fee=fee, requirements=requirements)
 
 
@@ -70,9 +83,13 @@ def resolve_case(
     resolution logic here, only a different `service_code` selecting a
     different service's own seeded Questions/Requirements/FeeRules.
 
-    Age SHALL be evaluated first, unconditionally, before any other
-    resolution runs — an under-16 answer short-circuits straight to the
-    scope-gate response with no requirements, fee, offices, or plan.
+    Age SHALL be evaluated first, before any other resolution runs — an
+    under-16 answer short-circuits straight to the scope-gate response
+    with no requirements, fee, offices, or plan, UNLESS `service_code`
+    IS `passport-under-16` (Phase 9 service #5) — that service's whole
+    premise is a child under 16, so the gate that exists to refuse a
+    minor's application everywhere else would refuse the one service
+    built specifically to handle it.
 
     Every relevant question for `service_code` SHALL be answered before
     a requirement set is produced — raises `IncompleteCaseError`
@@ -89,7 +106,7 @@ def resolve_case(
     if "age" not in answers:
         raise ValueError("resolve_case requires an 'age' answer before resolving")
     age = float(answers["age"])
-    if age < 16:
+    if age < 16 and service_code != UNDER_16_SERVICE_CODE:
         return CaseResolution(scope_gate=ScopeGateResponse(reason=SCOPE_GATE_UNDER_16))
 
     service = db.scalars(select(Service).where(Service.code == service_code)).first()

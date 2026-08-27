@@ -101,18 +101,33 @@ def test_section_19_2_question_is_answerable_without_knowing_the_term(db):
     assert "citizenship act" not in prompt.lower()
 
 
-def test_only_section_19_2_carries_a_hint(db):
-    """Every other renewal question is answerable without any
-    legislative knowledge to begin with, so `hint` is null for them —
-    only section_19_2 (the one genuinely legal-reference-shaped fact)
-    has one, and the reference lives there, not in the plain-language
-    prompt itself."""
+def test_only_section_19_2_and_photo_district_carry_a_hint(db):
+    """Every other question is answerable without any legislative
+    knowledge or extra context to begin with, so `hint` is null for
+    them — only section_19_2 (the one genuinely legal-reference-shaped
+    fact) and photo_district (item 5's "say 'same' to reuse your
+    applying district" shortcut, item 5 of the intake-parsing fix) have
+    one, and neither reference lives in the plain-language prompt
+    itself."""
     questions = db.scalars(select(Question)).all()
-    hinted = {q.prompt: q.hint for q in questions if q.hint is not None}
-    assert len(hinted) == 1
-    prompt, hint = next(iter(hinted.items()))
-    assert "19(2)" in hint
-    assert "19(2)" not in prompt
+    hinted_prompts = {q.prompt for q in questions if q.hint is not None}
+    # Multiple services each seed their own Question row for the same
+    # shared prompt text (renewal/new-applicant/lost-stolen/under-16/
+    # emergency-certificate all reuse photo_district verbatim) — dedupe
+    # by prompt text, not by row count.
+    assert hinted_prompts == {
+        "Did you apply for dual citizenship through the special "
+        "provisions route, rather than the standard application?",
+        "Which district will you take your passport photograph in?",
+    }
+    for q in questions:
+        if q.hint is None:
+            continue
+        if q.prompt == "Which district will you take your passport photograph in?":
+            assert "same" in q.hint.lower()
+        else:
+            assert "19(2)" in q.hint
+            assert "19(2)" not in q.prompt
 
 
 def test_divisional_secretariat_never_returned_as_an_office(db):
@@ -132,7 +147,7 @@ def test_resolved_plan_never_mentions_a_divisional_secretariat_as_submission(db)
     answers = {
         "age": "30", "applying_from": "sri_lanka", "holds_passport": "true", "name_changed": "false",
         "dual_citizen": "false", "section_19_2": "false", "profession": "",
-        "buddhist_priest": "false", "district": "Kandy", "service_basis": "normal",
+        "buddhist_priest": "false", "district": "Kandy", "photo_district": "Kandy", "service_basis": "normal",
     }
     result = resolve_case(db, answers)
     office_names = {o.name for o in result.offices.offices}

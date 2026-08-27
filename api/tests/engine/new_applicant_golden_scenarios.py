@@ -52,7 +52,7 @@ DUAL_CITIZEN_SET = {
 NEW_APPLICANT_GOLDEN_SCENARIOS = [
     {
         "name": "1. Straightforward first-time applicant, Colombo, normal",
-        "answers": {**BASE, "age": "30", "district": "Colombo"},
+        "answers": {**BASE, "age": "30", "district": "Colombo", "photo_district": "Colombo"},
         "expected_labels": CORE_ADULT,
         "expected_fee": 10000.00,
         "expected_offices": {"Head Office"},
@@ -60,7 +60,7 @@ NEW_APPLICANT_GOLDEN_SCENARIOS = [
     },
     {
         "name": "2. Same but urgent",
-        "answers": {**BASE, "age": "30", "district": "Colombo", "service_basis": "urgent"},
+        "answers": {**BASE, "age": "30", "district": "Colombo", "photo_district": "Colombo", "service_basis": "urgent"},
         "expected_labels": CORE_ADULT,
         "expected_fee": 20000.00,
         "expected_offices": {"Head Office"},
@@ -76,7 +76,7 @@ NEW_APPLICANT_GOLDEN_SCENARIOS = [
     },
     {
         "name": "4. Under-16 — scope gate, not a partial plan",
-        "answers": {**BASE, "age": "10", "district": "Colombo"},
+        "answers": {**BASE, "age": "10", "district": "Colombo", "photo_district": "Colombo"},
         "expected_labels": set(),
         "expected_fee": None,
         "expected_offices": set(),
@@ -84,7 +84,7 @@ NEW_APPLICANT_GOLDEN_SCENARIOS = [
     },
     {
         "name": "5. Exactly 16 — NIC's lower boundary, still included",
-        "answers": {**BASE, "age": "16", "district": "Colombo"},
+        "answers": {**BASE, "age": "16", "district": "Colombo", "photo_district": "Colombo"},
         "expected_labels": CORE_ADULT,
         "expected_fee": 10000.00,
         "expected_offices": {"Head Office"},
@@ -92,7 +92,7 @@ NEW_APPLICANT_GOLDEN_SCENARIOS = [
     },
     {
         "name": "6. Dual citizen",
-        "answers": {**BASE, "age": "30", "district": "Colombo", "dual_citizen": "true"},
+        "answers": {**BASE, "age": "30", "district": "Colombo", "photo_district": "Colombo", "dual_citizen": "true"},
         "expected_labels": DUAL_CITIZEN_SET,
         "expected_fee": 10000.00,
         "expected_offices": {"Head Office"},
@@ -100,7 +100,7 @@ NEW_APPLICANT_GOLDEN_SCENARIOS = [
     },
     {
         "name": "7. Name changed — marriage cert present, no amendment alternative",
-        "answers": {**BASE, "age": "30", "district": "Colombo", "name_changed": "true"},
+        "answers": {**BASE, "age": "30", "district": "Colombo", "photo_district": "Colombo", "name_changed": "true"},
         "expected_labels": CORE_ADULT | {MARRIAGE_CERT_LABEL},
         "expected_fee": 10000.00,
         "expected_offices": {"Head Office"},
@@ -113,7 +113,7 @@ NEW_APPLICANT_GOLDEN_SCENARIOS = [
     },
     {
         "name": "8. Buddhist priest",
-        "answers": {**BASE, "age": "30", "district": "Colombo", "buddhist_priest": "true"},
+        "answers": {**BASE, "age": "30", "district": "Colombo", "photo_district": "Colombo", "buddhist_priest": "true"},
         "expected_labels": CORE_ADULT | {SAMANERA_LABEL},
         "expected_fee": 10000.00,
         "expected_offices": {"Head Office"},

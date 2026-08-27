@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import pytest
 
-from app.chat.classifier import Classification, ExtractedFacts
+from app.chat.classifier import Classification
 from app.chat.tools import get_fee
 from app.graph import nodes as graph_nodes
 from app.graph.build import get_compiled_graph
@@ -22,7 +22,7 @@ from .conftest import submit_answer_response, text_response, tool_use_response
 # by `mock_agent_client` breaking classify()'s own `.messages.parse()`
 # call (both modules import the same `anthropic` module object).
 _QUESTION_CLASSIFICATION = Classification(
-    intent="question", extracted=ExtractedFacts(), contains_question=True, confidence=0.95
+    intent="question", extracted=[], contains_question=True, confidence=0.95
 )
 
 

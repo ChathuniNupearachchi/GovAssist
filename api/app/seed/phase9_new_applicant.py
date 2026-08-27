@@ -195,6 +195,14 @@ def seed(db: Session) -> None:
             negated=False,
         )
     )
+    # photo_district — same gate (item 5 of the intake-parsing fix).
+    db.add(
+        QuestionCondition(
+            question_id=questions["photo_district"].id,
+            condition_id=cond_applying_from_sri_lanka.id,
+            negated=False,
+        )
+    )
     # profession relevant only once age >= 16 — same as renewal.
     db.add(
         QuestionCondition(

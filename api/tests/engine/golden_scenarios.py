@@ -90,7 +90,7 @@ NEW_NIC_LABEL = (
 GOLDEN_SCENARIOS = [
     {
         "name": "1. Straightforward adult renewal, Colombo, normal",
-        "answers": {**BASE, "age": "30", "district": "Colombo"},
+        "answers": {**BASE, "age": "30", "district": "Colombo", "photo_district": "Colombo"},
         "expected_labels": STANDARD_CORE | {CURRENT_PASSPORT_LABEL},
         "expected_fee": 10000.00,
         "expected_offices": {"Head Office"},
@@ -100,7 +100,7 @@ GOLDEN_SCENARIOS = [
     },
     {
         "name": "2. Same but urgent",
-        "answers": {**BASE, "age": "30", "district": "Colombo", "service_basis": "urgent"},
+        "answers": {**BASE, "age": "30", "district": "Colombo", "photo_district": "Colombo", "service_basis": "urgent"},
         "expected_labels": STANDARD_CORE | {CURRENT_PASSPORT_LABEL},
         "expected_fee": 20000.00,
         "expected_offices": {"Head Office"},
@@ -110,7 +110,7 @@ GOLDEN_SCENARIOS = [
     },
     {
         "name": "3. Name changed after marriage",
-        "answers": {**BASE, "age": "30", "district": "Colombo", "name_changed": "true"},
+        "answers": {**BASE, "age": "30", "district": "Colombo", "photo_district": "Colombo", "name_changed": "true"},
         "expected_labels": STANDARD_CORE | {CURRENT_PASSPORT_LABEL, MARRIAGE_CERT_LABEL},
         "expected_fee": 10000.00,
         "expected_offices": {"Head Office"},
@@ -120,7 +120,7 @@ GOLDEN_SCENARIOS = [
     },
     {
         "name": "4. Expired over 5 years ago",
-        "answers": {**BASE, "age": "40", "district": "Matara", "holds_passport": "false"},
+        "answers": {**BASE, "age": "40", "district": "Matara", "photo_district": "Matara", "holds_passport": "false"},
         "expected_labels": STANDARD_CORE,
         "expected_fee": 10000.00,
         "expected_offices": {"Head Office", "Matara Regional Office"},
@@ -130,7 +130,7 @@ GOLDEN_SCENARIOS = [
     },
     {
         "name": "5. Applying from Kandy",
-        "answers": {**BASE, "age": "30", "district": "Kandy"},
+        "answers": {**BASE, "age": "30", "district": "Kandy", "photo_district": "Kandy"},
         "expected_labels": STANDARD_CORE | {CURRENT_PASSPORT_LABEL},
         "expected_fee": 10000.00,
         "expected_offices": {"Head Office", "Kandy Regional Office"},
@@ -140,7 +140,7 @@ GOLDEN_SCENARIOS = [
     },
     {
         "name": "6. Dual citizen",
-        "answers": {**BASE, "age": "30", "district": "Colombo", "dual_citizen": "true"},
+        "answers": {**BASE, "age": "30", "district": "Colombo", "photo_district": "Colombo", "dual_citizen": "true"},
         "expected_labels": DUAL_CITIZEN_SET,
         "expected_fee": 10000.00,
         "expected_offices": {"Head Office"},
@@ -150,7 +150,7 @@ GOLDEN_SCENARIOS = [
     },
     {
         "name": "7. Buddhist priest",
-        "answers": {**BASE, "age": "30", "district": "Colombo", "buddhist_priest": "true"},
+        "answers": {**BASE, "age": "30", "district": "Colombo", "photo_district": "Colombo", "buddhist_priest": "true"},
         "expected_labels": STANDARD_CORE | {CURRENT_PASSPORT_LABEL, SAMANERA_LABEL},
         "expected_fee": 10000.00,
         "expected_offices": {"Head Office"},
@@ -160,7 +160,7 @@ GOLDEN_SCENARIOS = [
     },
     {
         "name": "8. No longer holds old passport",
-        "answers": {**BASE, "age": "35", "district": "Jaffna", "holds_passport": "false"},
+        "answers": {**BASE, "age": "35", "district": "Jaffna", "photo_district": "Jaffna", "holds_passport": "false"},
         "expected_labels": STANDARD_CORE,
         "expected_fee": 10000.00,
         "expected_offices": {"Head Office", "Jaffna Regional Office"},
@@ -187,7 +187,7 @@ GOLDEN_SCENARIOS = [
     {
         "name": "10. Name changed and urgent and Kandy",
         "answers": {
-            **BASE, "age": "30", "district": "Kandy",
+            **BASE, "age": "30", "district": "Kandy", "photo_district": "Kandy",
             "name_changed": "true", "service_basis": "urgent",
         },
         "expected_labels": STANDARD_CORE | {CURRENT_PASSPORT_LABEL, MARRIAGE_CERT_LABEL},
@@ -210,7 +210,7 @@ GOLDEN_SCENARIOS = [
     # the resolver's set-replacement logic had a bug.
     {
         "name": "11. Under-16 applicant returns the scope gate",
-        "answers": {**BASE, "age": "15", "district": "Colombo"},
+        "answers": {**BASE, "age": "15", "district": "Colombo", "photo_district": "Colombo"},
         "expected_labels": set(),
         "expected_fee": None,
         "expected_offices": set(),
@@ -220,7 +220,7 @@ GOLDEN_SCENARIOS = [
     },
     {
         "name": "12. Exactly 16 — fingerprint requirement's lower boundary",
-        "answers": {**BASE, "age": "16", "district": "Colombo"},
+        "answers": {**BASE, "age": "16", "district": "Colombo", "photo_district": "Colombo"},
         "expected_labels": STANDARD_CORE | {CURRENT_PASSPORT_LABEL},
         "expected_fee": 10000.00,
         "expected_offices": {"Head Office"},
@@ -230,7 +230,7 @@ GOLDEN_SCENARIOS = [
     },
     {
         "name": "13. Exactly 60 — fingerprint requirement's upper boundary, still included",
-        "answers": {**BASE, "age": "60", "district": "Colombo"},
+        "answers": {**BASE, "age": "60", "district": "Colombo", "photo_district": "Colombo"},
         "expected_labels": STANDARD_CORE | {CURRENT_PASSPORT_LABEL},
         "expected_fee": 10000.00,
         "expected_offices": {"Head Office"},
@@ -240,7 +240,7 @@ GOLDEN_SCENARIOS = [
     },
     {
         "name": "14. Exactly 61 — one past the boundary, fingerprints now excluded",
-        "answers": {**BASE, "age": "61", "district": "Colombo"},
+        "answers": {**BASE, "age": "61", "district": "Colombo", "photo_district": "Colombo"},
         "expected_labels": (STANDARD_CORE | {CURRENT_PASSPORT_LABEL}) - {FINGERPRINTS_LABEL},
         "expected_fee": 10000.00,
         "expected_offices": {"Head Office"},
@@ -251,7 +251,7 @@ GOLDEN_SCENARIOS = [
     {
         "name": "15. Dual citizen under section 19(2) — the AND-condition positive case",
         "answers": {
-            **BASE, "age": "30", "district": "Colombo",
+            **BASE, "age": "30", "district": "Colombo", "photo_district": "Colombo",
             "dual_citizen": "true", "section_19_2": "true",
         },
         "expected_labels": DUAL_CITIZEN_SET | {NEW_NIC_LABEL},
@@ -263,7 +263,7 @@ GOLDEN_SCENARIOS = [
     },
     {
         "name": "16. Section 19(2) alone, not a dual citizen — the AND-condition near-miss",
-        "answers": {**BASE, "age": "30", "district": "Colombo", "section_19_2": "true"},
+        "answers": {**BASE, "age": "30", "district": "Colombo", "photo_district": "Colombo", "section_19_2": "true"},
         # new_nic requires BOTH dual_citizen AND section_19_2 — section
         # 19(2) alone must NOT trigger it. A resolver that treated these
         # as an OR (or ignored section_19_2 for a non-dual-citizen case
@@ -277,7 +277,7 @@ GOLDEN_SCENARIOS = [
     },
     {
         "name": "17. Profession stated — the educational certificate branch",
-        "answers": {**BASE, "age": "30", "district": "Colombo", "profession": "Doctor"},
+        "answers": {**BASE, "age": "30", "district": "Colombo", "photo_district": "Colombo", "profession": "Doctor"},
         "expected_labels": STANDARD_CORE | {CURRENT_PASSPORT_LABEL, EDUCATIONAL_CERT_LABEL},
         "expected_fee": 10000.00,
         "expected_offices": {"Head Office"},
@@ -288,7 +288,7 @@ GOLDEN_SCENARIOS = [
     {
         "name": "18. Buddhist priest who is also a dual citizen — the set-replacement near-miss",
         "answers": {
-            **BASE, "age": "30", "district": "Colombo",
+            **BASE, "age": "30", "district": "Colombo", "photo_district": "Colombo",
             "dual_citizen": "true", "buddhist_priest": "true",
         },
         # The Samanera certificate is only linked within the standard
@@ -308,7 +308,7 @@ GOLDEN_SCENARIOS = [
     {
         "name": "19. No current passport and a changed name, together",
         "answers": {
-            **BASE, "age": "30", "district": "Vavuniya",
+            **BASE, "age": "30", "district": "Vavuniya", "photo_district": "Vavuniya",
             "holds_passport": "false", "name_changed": "true",
         },
         # The marriage certificate's condition (name_changed) is
@@ -325,7 +325,7 @@ GOLDEN_SCENARIOS = [
     {
         "name": "20. Everything at once — boundary age, dual citizen, section 19(2), urgent, Kandy",
         "answers": {
-            **BASE, "age": "16", "district": "Kandy",
+            **BASE, "age": "16", "district": "Kandy", "photo_district": "Kandy",
             "dual_citizen": "true", "section_19_2": "true",
             "service_basis": "urgent",
         },
@@ -342,7 +342,7 @@ GOLDEN_SCENARIOS = [
     {
         "name": "21. Buddhist monk who is also a teacher — bug #6 regression",
         "answers": {
-            **BASE, "age": "30", "district": "Colombo",
+            **BASE, "age": "30", "district": "Colombo", "photo_district": "Colombo",
             "buddhist_priest": "true", "profession": "Teacher",
         },
         # Both the profession-gated Educational Certificate AND the
@@ -361,7 +361,7 @@ GOLDEN_SCENARIOS = [
     },
     {
         "name": "22. Colombo applicant — bug #1 regression (no Kurunegala, no Mission)",
-        "answers": {**BASE, "age": "30", "district": "Colombo"},
+        "answers": {**BASE, "age": "30", "district": "Colombo", "photo_district": "Colombo"},
         "expected_labels": STANDARD_CORE | {CURRENT_PASSPORT_LABEL},
         "expected_fee": 10000.00,
         # Exactly Head Office — never Kurunegala Regional Office (~94km
@@ -375,7 +375,7 @@ GOLDEN_SCENARIOS = [
     },
     {
         "name": "23. Under-16 applicant — bug #2 regression (scope gate, not a partial plan)",
-        "answers": {**BASE, "age": "10", "district": "Colombo"},
+        "answers": {**BASE, "age": "10", "district": "Colombo", "photo_district": "Colombo"},
         "expected_labels": set(),
         "expected_fee": None,
         "expected_offices": set(),
@@ -392,7 +392,7 @@ GOLDEN_SCENARIOS = [
     # being implicit in every pre-existing scenario's default.
     {
         "name": "24. Explicit applying_from=sri_lanka — domestic branch (regression)",
-        "answers": {**BASE, "age": "30", "district": "Kandy", "applying_from": "sri_lanka"},
+        "answers": {**BASE, "age": "30", "district": "Kandy", "photo_district": "Kandy", "applying_from": "sri_lanka"},
         "expected_labels": STANDARD_CORE | {CURRENT_PASSPORT_LABEL},
         "expected_fee": 10000.00,
         "expected_offices": {"Head Office", "Kandy Regional Office"},

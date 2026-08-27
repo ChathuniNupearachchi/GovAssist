@@ -15,11 +15,19 @@ from langchain_core.runnables import RunnableConfig
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.chat.deterministic import is_greeting, try_deterministic_match
+from app.chat.deterministic import (
+    is_greeting,
+    is_same_district_as_before as _is_same_district_as_before,
+    try_deterministic_match,
+)
 from app.chat.classifier import classify as _classify
 from app.engine.next_question import next_question as _next_question
 from app.engine.renewal_intake import ATTRIBUTE_BY_PROMPT, PROMPT_BY_ATTRIBUTE
-from app.engine.resolver import SCOPE_GATE_UNDER_16, resolve_case as _resolve_case
+from app.engine.resolver import (
+    SCOPE_GATE_UNDER_16,
+    UNDER_16_SERVICE_CODE,
+    resolve_case as _resolve_case,
+)
 from app.engine.types import (
     AmendmentAlternative,
     CaseResolution,
@@ -72,7 +80,17 @@ def _answers_dict(db: Session, case_id: uuid.UUID | str) -> dict[str, str]:
     return answers
 
 
-def _is_under_16(answers: dict[str, str]) -> bool:
+def _is_under_16(answers: dict[str, str], service_code: str | None = None) -> bool:
+    """False for `passport-under-16` regardless of age — that service's
+    whole premise is a child under 16 (Phase 9 service #5), so the
+    scope gate that exists to refuse a minor everywhere else must never
+    fire for it. Bug found and fixed alongside `resolve_case`'s own
+    `service_code`-conditional gate: this node-level short-circuit
+    checks age BEFORE `resolve_case` is ever called, so fixing only
+    `resolve_case` left every call site here still refusing a
+    passport-under-16 conversation the instant age was recorded."""
+    if service_code == UNDER_16_SERVICE_CODE:
+        return False
     age = answers.get("age")
     return age is not None and float(age) < 16
 
@@ -184,7 +202,12 @@ def classify_node(state: GraphState, config: RunnableConfig) -> dict[str, Any]:
         }
 
     deterministic_value = None
-    if pending_attribute is not None:
+    if pending_attribute == "photo_district" and _is_same_district_as_before(message):
+        # Item 5's "default to the applying district" shortcut — a bare
+        # "same"/"yes" means the district already given, not a literal
+        # value the citizen has to retype.
+        deterministic_value = answers_before.get("district") or None
+    if deterministic_value is None and pending_attribute is not None:
         deterministic_value = try_deterministic_match(pending_attribute, message)
 
     if deterministic_value is not None:
@@ -197,19 +220,41 @@ def classify_node(state: GraphState, config: RunnableConfig) -> dict[str, Any]:
         }
 
     classification = _classify(message, pending.prompt if pending is not None else None)
-    extracted = {
-        attribute: value
-        for attribute, value in classification.extracted.model_dump().items()
-        if value is not None
-    }
+    extracted = classification.extracted_dict()
     contains_question = classification.contains_question
-    should_answer_via_rag = contains_question or classification.intent == "question"
+
+    # CRITICAL BUG FIX (production incident): while a question is
+    # pending, a genuinely UNCLEAR/degraded classification (an
+    # exception, or a below-threshold confidence — see classifier.py's
+    # fix #2) must never fall through to "treat it as an unanswerable
+    # question" — that used to route to the full tool-agent, which had
+    # nothing to answer and returned "I don't have that information"
+    # while the citizen was mid-sentence attempting to answer. Ask again
+    # in plain language instead, and never invoke the agent for this
+    # turn. Deliberately gated on `unclear` alone, NOT "nothing
+    # extracted" — a confidently-classified "situation" message that
+    # legitimately states no fact for the pending attribute (e.g. the
+    # opening "i need to renew my passport", which has no age in it) is
+    # a normal, well-understood turn, not an unclear one; it must fall
+    # through to the ordinary next-question flow below, not trigger a
+    # spurious "sorry, I didn't catch that" (regression caught during
+    # this fix's own live verification — see this change's report).
+    if pending_attribute is not None and classification.unclear:
+        return {
+            **base,
+            "extracted": {},
+            "intent": "unclear",
+            "contains_question": False,
+            "should_answer_via_rag": False,
+            "reask_message": f"Sorry, I didn't catch that. {pending.prompt}",
+        }
+
     return {
         **base,
         "extracted": extracted,
         "intent": classification.intent,
         "contains_question": contains_question,
-        "should_answer_via_rag": should_answer_via_rag,
+        "should_answer_via_rag": contains_question or classification.intent == "question",
     }
 
 
@@ -261,7 +306,7 @@ def next_question_node(state: GraphState, config: RunnableConfig) -> dict[str, A
 
     if state["action"] == "resolve":
         answers = _answers_dict(db, case_id)
-        if _is_under_16(answers):
+        if _is_under_16(answers, service_code=case.service.code):
             # Scope-gate short-circuits straight through to `resolve` —
             # resolve_case itself produces the scope_gate response.
             return {"next_pending_question_id": None, "next_pending_question_prompt": None}
@@ -271,10 +316,12 @@ def next_question_node(state: GraphState, config: RunnableConfig) -> dict[str, A
             "next_pending_question_prompt": pending.prompt if pending is not None else None,
         }
 
-    if state.get("intent") == "greeting":
+    if state.get("intent") == "greeting" or state.get("reask_message"):
         # A greeting doesn't start or continue intake (bug fix — manual
-        # QA bug #3) — no question is offered this turn, regardless of
-        # whether one was already pending.
+        # QA bug #3); a reask_message already restates the pending
+        # question in its own text (CRITICAL BUG FIX — production
+        # incident), so no separate next_question is offered this turn
+        # either — avoids showing the same question twice in one reply.
         return {"next_pending_question_id": None, "next_pending_question_prompt": None}
 
     answers_after = state.get("answers_after") or state.get("answers_before", {})
@@ -285,7 +332,7 @@ def next_question_node(state: GraphState, config: RunnableConfig) -> dict[str, A
     # finally called. Check it here too, immediately once age<16 is
     # recorded — the very next response is the scope-gate message, not
     # another question.
-    if _is_under_16(answers_after):
+    if _is_under_16(answers_after, service_code=case.service.code):
         return {
             "next_pending_question_id": None,
             "next_pending_question_prompt": None,
@@ -309,7 +356,7 @@ def resolve_node(state: GraphState, config: RunnableConfig) -> dict[str, Any]:
     case = db.get(Case, uuid.UUID(case_id))
     answers = _answers_dict(db, case_id)
 
-    if not _is_under_16(answers) and state.get("next_pending_question_prompt") is not None:
+    if not _is_under_16(answers, service_code=case.service.code) and state.get("next_pending_question_prompt") is not None:
         return {
             "resolution": {
                 "ready": False,

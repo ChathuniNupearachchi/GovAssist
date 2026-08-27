@@ -24,11 +24,12 @@ def route_entry(state: GraphState) -> str:
 def route_after_next_question(state: GraphState) -> str:
     if state["action"] == "resolve":
         return "resolve"
-    if state.get("scope_gate_message") or state.get("greeting_message"):
-        # Under-16 just got recorded this turn, or the message was a
-        # greeting/orientation request — end immediately with that
-        # message rather than also answering an open question the same
-        # message happened to ask (see next_question_node).
+    if state.get("scope_gate_message") or state.get("greeting_message") or state.get("reask_message"):
+        # Under-16 just got recorded this turn, the message was a
+        # greeting/orientation request, or classify_node couldn't
+        # determine an answer while a question was pending (CRITICAL
+        # BUG FIX) — end immediately with that message rather than
+        # invoking the agent, which has nothing to answer.
         return END
     if state.get("should_answer_via_rag"):
         return "agent"

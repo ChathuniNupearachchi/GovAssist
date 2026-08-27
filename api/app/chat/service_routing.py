@@ -1,10 +1,41 @@
 """Situation-to-service routing for a brand-new case's opening message.
 
-Three services to route between: `passport-renewal` (the default),
+Seven services to route between: `passport-renewal` (the default),
 `passport-new` (first-time applicant), `passport-lost-stolen` (a
 previously-issued passport lost or stolen — design.md's own "Citizen's
 words" for this service: "my passport was stolen", "I lost my
-passport", "someone stole my bag with my passport in it").
+passport", "someone stole my bag with my passport in it"),
+`passport-amendment` (design.md's own "Citizen's words": "I need to
+change my name on my passport", "add my profession to my passport",
+"update my NIC number on my passport" — the citizen already holds the
+passport, wants to change data on it, not replace it),
+`passport-under-16` (design.md's own "Citizen's words": "applying for
+my child's first passport", "my son needs a passport", "how do I get a
+passport for my daughter" — service #5's own "Common misrouting" note:
+a parent asking to "add"/"include" their child on their own passport
+is a real, commonly-asked question, not a routable situation — that's
+no longer offered at all (id=8 seq 30: "Inclusion of children in
+parent passports will not longer be allowed"), so it should reach the
+open-question path and be told so directly, not silently routed
+anywhere; this module doesn't special-case that phrasing at all,
+leaving it to fall through to the classifier as an ordinary message),
+`passport-child-deletion` (design.md's own "Citizen's words": "remove
+my child from my passport", "I need to take my daughter off my
+passport", "my son needs his own passport now, how do I delete him
+from mine" — kept as its OWN phrase set distinct from AMENDMENT_PHRASES
+per service #6's own "Common misrouting" note: a parent might describe
+this generically as "an amendment" without realizing it's its own
+errand, which is exactly why this module routes an unambiguous
+"remove"/"delete [a child]" phrasing straight here rather than to
+amendment first), `emergency-certificate` (design.md's own "Citizen's
+words": "I need an emergency certificate for Nepal", "going to India on
+pilgrimage, what travel document do I need" — service #7's own "Common
+misrouting" note flags this the other direction too: a citizen wanting
+a full ordinary passport for India/Nepal travel might not realize this
+narrower, cheaper document exists — this module can't fix that (it only
+routes an already-stated intent, it doesn't suggest alternatives), but
+an unambiguous "emergency certificate"/pilgrimage phrasing is routed
+straight here rather than falling to the renewal default).
 
 Both design.md's service #2 and #3 flag the SAME misrouting risk from
 opposite directions: a citizen whose passport merely expired,
@@ -48,9 +79,13 @@ same reasoning from the other direction.
 from __future__ import annotations
 
 from app.engine.resolver import (
+    AMENDMENT_SERVICE_CODE,
+    CHILD_DELETION_SERVICE_CODE,
+    EMERGENCY_CERTIFICATE_SERVICE_CODE,
     LOST_STOLEN_SERVICE_CODE,
     NEW_APPLICANT_SERVICE_CODE,
     RENEWAL_SERVICE_CODE,
+    UNDER_16_SERVICE_CODE,
 )
 
 # Design.md's own "Citizen's words" for service #2, plus the closest
@@ -103,15 +138,109 @@ LOST_STOLEN_PHRASES = frozenset(
 )
 
 
+AMENDMENT_PHRASES = frozenset(
+    {
+        "i need to change my name on my passport",
+        "i want to change my name on my passport",
+        "change my name on my passport",
+        "add my profession to my passport",
+        "include my profession on my passport",
+        "update my nic number on my passport",
+        "add my nic number to my passport",
+        "i want to amend my passport",
+        "i need to amend my passport",
+        "amend my passport",
+        "i need to correct my passport",
+        "correct my passport details",
+    }
+)
+
+
+UNDER_16_PHRASES = frozenset(
+    {
+        "applying for my child's first passport",
+        "applying for my childs first passport",
+        "my child needs a passport",
+        "my son needs a passport",
+        "my daughter needs a passport",
+        "how do i get a passport for my daughter",
+        "how do i get a passport for my son",
+        "how do i get a passport for my child",
+        "i need a passport for my child",
+        "i need a passport for my son",
+        "i need a passport for my daughter",
+        "passport for my child",
+        "passport for my son",
+        "passport for my daughter",
+        "my child's first passport",
+        "my childs first passport",
+    }
+)
+
+
+CHILD_DELETION_PHRASES = frozenset(
+    {
+        "remove my child from my passport",
+        "i need to remove my child from my passport",
+        "take my daughter off my passport",
+        "i need to take my daughter off my passport",
+        "take my son off my passport",
+        "i need to take my son off my passport",
+        "delete my child from my passport",
+        "delete my son from my passport",
+        "delete my daughter from my passport",
+        "how do i delete my child from my passport",
+        "how do i remove my child from my passport",
+        "remove my daughter from my passport",
+        "remove my son from my passport",
+    }
+)
+
+
+EMERGENCY_CERTIFICATE_PHRASES = frozenset(
+    {
+        "i need an emergency certificate",
+        "i need an emergency certificate for nepal",
+        "i need an emergency certificate for india",
+        "i need an emergency certificate for india or nepal",
+        "going to india on pilgrimage, what travel document do i need",
+        "going to nepal on pilgrimage, what travel document do i need",
+        "i need an emergency certificate for my pilgrimage",
+        "emergency certificate for india and nepal",
+        "how do i get an emergency certificate",
+        "i'm going on a buddhist pilgrimage to india",
+        "im going on a buddhist pilgrimage to india",
+        "i'm going on a buddhist pilgrimage to nepal",
+        "im going on a buddhist pilgrimage to nepal",
+    }
+)
+
+
 def route_opening_message(message: str) -> str:
     """Returns the service code a brand-new case's opening message
     should be attached to — `passport-new` for an unambiguous
     first-time phrasing, `passport-lost-stolen` for an unambiguous
-    loss/theft phrasing, `passport-renewal` (the existing default)
-    otherwise."""
+    loss/theft phrasing, `passport-amendment` for an unambiguous
+    change-existing-data phrasing, `passport-under-16` for an
+    unambiguous child's-passport phrasing, `passport-child-deletion`
+    for an unambiguous remove-a-child phrasing, `emergency-certificate`
+    for an unambiguous Emergency Certificate/pilgrimage phrasing,
+    `passport-renewal` (the existing default) otherwise. Child-deletion
+    is checked BEFORE amendment — a phrase like "remove my child from
+    my passport" is unambiguous for deletion specifically, so it's
+    matched there first rather than risking AMENDMENT_PHRASES catching
+    a stray substring."""
     stripped_lower = message.strip().lower()
     if stripped_lower in FIRST_TIME_PHRASES:
         return NEW_APPLICANT_SERVICE_CODE
     if stripped_lower in LOST_STOLEN_PHRASES:
         return LOST_STOLEN_SERVICE_CODE
+    if stripped_lower in CHILD_DELETION_PHRASES:
+        return CHILD_DELETION_SERVICE_CODE
+    if stripped_lower in AMENDMENT_PHRASES:
+        return AMENDMENT_SERVICE_CODE
+    if stripped_lower in UNDER_16_PHRASES:
+        return UNDER_16_SERVICE_CODE
+    if stripped_lower in EMERGENCY_CERTIFICATE_PHRASES:
+        return EMERGENCY_CERTIFICATE_SERVICE_CODE
     return RENEWAL_SERVICE_CODE

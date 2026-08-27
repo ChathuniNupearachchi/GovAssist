@@ -33,6 +33,7 @@ from app.engine.requirements import resolve_requirements
 from app.engine.resolver import (
     AMENDMENT_SERVICE_CODE,
     RENEWAL_SERVICE_CODE,
+    UNDER_16_SERVICE_CODE,
     _amendment_alternative,
     _approved_rule_version,
     resolve_case as _resolve_case,
@@ -191,7 +192,12 @@ def get_next_question(db: Session, case_id: str) -> dict[str, Any]:
     return {"pending": True, "attribute": ATTRIBUTE_BY_PROMPT.get(question.prompt), "prompt": question.prompt}
 
 
-def _is_under_16(answers: dict[str, str]) -> bool:
+def _is_under_16(answers: dict[str, str], service_code: str | None = None) -> bool:
+    """False for `passport-under-16` regardless of age — see
+    `app.graph.nodes._is_under_16`'s identical fix; this is the agent
+    tool's own independent copy of the same pre-check."""
+    if service_code == UNDER_16_SERVICE_CODE:
+        return False
     age = answers.get("age")
     return age is not None and float(age) < 16
 
@@ -208,7 +214,7 @@ def resolve_case(db: Session, case_id: str) -> dict[str, Any]:
         return {"error": f"No case found with id '{case_id}'."}
 
     answers = _answers_dict(db, case.id)
-    if not _is_under_16(answers):
+    if not _is_under_16(answers, service_code=case.service.code):
         pending = _next_question(db, case.service_id, answers)
         if pending is not None:
             return {"ready": False, "pending_question": pending.prompt}

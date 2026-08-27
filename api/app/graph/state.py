@@ -88,6 +88,13 @@ class GraphState(TypedDict, total=False):
     # so it short-circuits straight to this canned response instead of
     # starting or continuing intake.
     greeting_message: str | None
+    # Set by classify_node (CRITICAL BUG FIX — production incident) when
+    # a question is pending and the classifier neither extracted an
+    # answer nor confidently detected a genuine question — a plain
+    # "didn't catch that, please repeat" re-ask, never routed to the
+    # agent. Distinct from greeting_message/scope_gate_message only in
+    # when it fires; transported the same way (see build.py).
+    reask_message: str | None
 
     # --- presentation-only, action="message" ---
     acknowledgement: str | None

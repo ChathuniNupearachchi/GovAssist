@@ -4,6 +4,14 @@ covers what's actually different about this service (the reporting
 prerequisite split, the NMRP condition, the combined penalty fee), not
 every condition interaction already exhaustively covered by renewal's
 24 scenarios.
+
+Scenario 6 exercises the reason `lost_location` exists as its own
+attribute, separate from `applying_from` — a citizen who lost the
+passport abroad but has since returned and is applying domestically.
+Gating the NMRP/reporting on `applying_from` instead (the original,
+wrong implementation) would have silently skipped both for this
+citizen — see `app.engine.renewal_intake`'s `_LOST_LOCATION_QUESTION`
+docstring.
 """
 
 BASE = {
@@ -14,6 +22,7 @@ BASE = {
     "buddhist_priest": "false",
     "service_basis": "normal",
     "applying_from": "sri_lanka",
+    "lost_location": "sri_lanka",
 }
 
 FINGERPRINTS_LABEL = (
@@ -56,14 +65,14 @@ CORE_OVERSEAS = {
 LOST_STOLEN_GOLDEN_SCENARIOS = [
     {
         "name": "1. Domestic, lost within a year, normal",
-        "answers": {**BASE, "age": "30", "district": "Colombo", "lost_passport_age": "within_1_year"},
+        "answers": {**BASE, "age": "30", "district": "Colombo", "photo_district": "Colombo", "lost_passport_age": "within_1_year"},
         "expected_labels": CORE_DOMESTIC,
         "expected_fee": 30000.00,  # 10,000 base + 20,000 penalty
         "expected_offices": {"Head Office"},
     },
     {
         "name": "2. Domestic, lost over a year ago, normal",
-        "answers": {**BASE, "age": "30", "district": "Colombo", "lost_passport_age": "over_1_year"},
+        "answers": {**BASE, "age": "30", "district": "Colombo", "photo_district": "Colombo", "lost_passport_age": "over_1_year"},
         "expected_labels": CORE_DOMESTIC,
         "expected_fee": 25000.00,  # 10,000 base + 15,000 penalty
         "expected_offices": {"Head Office"},
@@ -71,7 +80,7 @@ LOST_STOLEN_GOLDEN_SCENARIOS = [
     {
         "name": "3. Domestic, lost within a year, urgent",
         "answers": {
-            **BASE, "age": "30", "district": "Colombo",
+            **BASE, "age": "30", "district": "Colombo", "photo_district": "Colombo",
             "lost_passport_age": "within_1_year", "service_basis": "urgent",
         },
         "expected_labels": CORE_DOMESTIC,
@@ -79,10 +88,10 @@ LOST_STOLEN_GOLDEN_SCENARIOS = [
         "expected_offices": {"Head Office"},
     },
     {
-        "name": "4. Applying from abroad — Mission-only offices/form, NMRP required",
+        "name": "4. Applying from abroad, lost abroad — Mission-only offices/form, NMRP required",
         "answers": {
             **BASE, "age": "30", "district": None, "applying_from": "abroad",
-            "lost_passport_age": "over_1_year",
+            "lost_location": "abroad", "lost_passport_age": "over_1_year",
         },
         "expected_labels": CORE_OVERSEAS,
         "expected_fee": 25000.00,
@@ -91,13 +100,33 @@ LOST_STOLEN_GOLDEN_SCENARIOS = [
     {
         "name": "5. Name changed — marriage cert present alongside the loss documents",
         "answers": {
-            **BASE, "age": "30", "district": "Colombo", "name_changed": "true",
+            **BASE, "age": "30", "district": "Colombo", "photo_district": "Colombo", "name_changed": "true",
             "lost_passport_age": "within_1_year",
         },
         "expected_labels": CORE_DOMESTIC | {MARRIAGE_CERT_LABEL},
         "expected_fee": 30000.00,
         "expected_offices": {"Head Office"},
     },
+    {
+        # Lost abroad, but already returned and applying domestically
+        # (flew home on the NMRP) — the case that exposed lost_location
+        # as its own attribute. NMRP and the OVERSEAS reporting
+        # instructions still apply (the loss/reporting happened abroad);
+        # the application form and office are domestic (applying_from
+        # is now sri_lanka).
+        "name": "6. Lost abroad, now applying domestically — NMRP still required",
+        "answers": {
+            **BASE, "age": "30", "district": "Colombo", "photo_district": "Colombo", "applying_from": "sri_lanka",
+            "lost_location": "abroad", "lost_passport_age": "within_1_year",
+        },
+        "expected_labels": {
+            "Photo studio acknowledgement", APPLICATION_FORM_LABEL, FINGERPRINTS_LABEL,
+            BIRTH_CERT_LABEL, NIC_LABEL, POLICE_COMPLAINT_LABEL, OVERSEAS_REPORTING_LABEL,
+            NMRP_LABEL,
+        },
+        "expected_fee": 30000.00,
+        "expected_offices": {"Head Office"},
+    },
 ]
 
-assert len(LOST_STOLEN_GOLDEN_SCENARIOS) == 5
+assert len(LOST_STOLEN_GOLDEN_SCENARIOS) == 6

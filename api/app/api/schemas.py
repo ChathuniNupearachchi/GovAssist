@@ -249,3 +249,40 @@ class ChatMessageOut(BaseModel):
 class TranscriptOut(BaseModel):
     case_id: uuid.UUID | None
     messages: list[ChatMessageOut]
+
+
+class StudioOut(BaseModel):
+    """Phase 7 (mobile-app-integration): one authorized photo studio, as
+    returned by `GET /studios`. Mirrors `engine_types.ResolvedStudio`
+    field-for-field, same pattern every other `*Out` model in this file
+    uses."""
+
+    id: uuid.UUID
+    name: str
+    address: str
+    phone: str | None
+    citation: CitationOut
+
+    @classmethod
+    def from_resolved(cls, s: engine_types.ResolvedStudio) -> "StudioOut":
+        return cls(
+            id=s.id,
+            name=s.name,
+            address=s.address,
+            phone=s.phone,
+            citation=CitationOut.from_citation(s.citation),
+        )
+
+
+class StudioResolutionOut(BaseModel):
+    district: str
+    studios: list[StudioOut]
+    receipt_note: str
+
+    @classmethod
+    def from_resolved(cls, r: engine_types.StudioResolution) -> "StudioResolutionOut":
+        return cls(
+            district=r.district,
+            studios=[StudioOut.from_resolved(s) for s in r.studios],
+            receipt_note=r.receipt_note,
+        )

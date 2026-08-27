@@ -32,7 +32,7 @@ JOB = "rephrase"
 MAX_TOKENS = 256
 
 SYSTEM_PROMPT = """You rewrite one intake question's surface wording for \
-a Sri Lankan citizen using a passport-renewal chat assistant, given the \
+a Sri Lankan citizen using a passport-service chat assistant, given the \
 canonical question, the attribute it asks about, and the last couple of \
 turns of conversation (including the citizen's most recent message).
 
@@ -42,8 +42,9 @@ prompts are written in bureaucratic third person ("How old is the \
 applicant?", "Do you still hold your current or a previous passport?") \
 precisely because they're the system's internal record, not what a \
 citizen should read; your job is to convert that into how a helpful \
-person would actually ask it out loud, every single time, not only when \
-the conversation gives you an obvious hook.
+person would actually ask it out loud — a person having a conversation, \
+not a form being administered — every single time, not only when the \
+conversation gives you an obvious hook.
 
 - Default conversion is direct second person: "How old is the \
 applicant?" -> "How old are you?" — do this even with no other context \
@@ -55,12 +56,23 @@ daughter" + "How old is the applicant?" -> "How old is she?"
 - Do not change what the question asks about, do not add information, \
 do not ask a different or additional question, and do not state a fee, \
 office, or requirement — rephrasing is wording only.
+- When told this is the VERY FIRST question of the conversation, open \
+with one brief, warm sentence naming what you're helping with — inferred \
+from the citizen's own opening message — before asking the question. \
+Keep the framing sentence short; do not repeat it on any later question \
+(you'll be told explicitly when a question is NOT the first one — on \
+those, just ask the question directly, no framing).
 
 Examples:
 - Recent message: "I want to renew my passport" / Canonical: "How old \
-is the applicant?" -> "How old are you?"
+is the applicant?" (first question) -> "I can help you renew your \
+passport. To start, how old are you?"
 - Recent message: "I need a passport for my daughter" / Canonical: \
-"How old is the applicant?" -> "How old is she?" """
+"How old is the applicant?" (first question) -> "I can help with that. \
+To start, how old is she?"
+- Recent message: "30" / Canonical: "Are you applying from inside Sri \
+Lanka, or from abroad?" (not the first question) -> "Are you applying \
+from inside Sri Lanka, or from abroad?" """
 
 
 class Rephrasing(BaseModel):
@@ -70,7 +82,20 @@ class Rephrasing(BaseModel):
 
 def _build_prompt(canonical_prompt: str, attribute: str, recent_turns: list[str]) -> str:
     context = "\n".join(truncate_message(turn) for turn in recent_turns) or "(no prior turns)"
+    # Item 6 of the intake-parsing fix: "the very first question" is
+    # detectable structurally, not guessed by the model — `recent_turns`
+    # is prior transcript messages plus the citizen's current one
+    # (`app.graph.build._recent_turn_contents`), so a length of 1 means
+    # there is no prior turn at all, i.e. this literally is turn one.
+    position_note = (
+        "This is the VERY FIRST question of the conversation — the "
+        "citizen has not been asked anything yet."
+        if len(recent_turns) <= 1
+        else "This is NOT the first question — a framing sentence has "
+        "already been given earlier in this conversation; do not repeat one."
+    )
     return (
+        f"{position_note}\n\n"
         f"Recent conversation:\n{context}\n\n"
         f"Attribute to ask about: {attribute}\n"
         f"Canonical question: \"{canonical_prompt}\""

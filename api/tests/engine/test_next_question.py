@@ -37,6 +37,7 @@ def test_no_further_question_once_all_relevant_answered(renewal_service_id, db):
         "profession": "",
         "buddhist_priest": "false",
         "district": "Colombo",
+        "photo_district": "Colombo",
         "service_basis": "normal",
     }
     # dual_citizen is false, so section_19_2 is not relevant and should

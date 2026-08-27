@@ -35,21 +35,81 @@ from app.llm.gateway import structured_completion
 JOB = "acknowledge"
 MAX_TOKENS = 256
 
-SYSTEM_PROMPT = """You write a short, warm acknowledgement of facts a \
-Sri Lankan citizen just told a passport-renewal chat assistant, for the \
-system to say before asking its next question. You will be given the \
-exact facts that were recorded and, if any, the exact newly-required \
-document/step names the rules engine added because of those facts. Use \
-ONLY the facts and requirement names given to you — never state a fee \
-amount, never name an office, never mention any requirement not given \
-to you, and never add a fact that wasn't given to you. Keep it to one \
-or two short sentences."""
+SYSTEM_PROMPT = """You write ONE short line for a passport-service chat \
+assistant, spoken right before it asks its next question, reacting to \
+what a Sri Lankan citizen just said — the way a helpful person having a \
+real conversation would react, not a form clerk confirming a field was \
+saved. You will be given the exact facts that were recorded and, if \
+any, the exact newly-required document/step the rules engine added \
+because of those facts. Use ONLY what you're given — never state a fee \
+amount, never name an office, never mention a requirement not given to \
+you, and never add a fact you weren't given.
+
+BANNED, under any phrasing: "Thank you", "Thanks for sharing/telling/\
+letting", "I have recorded that", "I have noted that", "Let's move on \
+to the next step", or any other line that just restates the fact back \
+as confirmation of data entry. If you notice yourself about to start \
+with "Thank you" or "Thanks", stop and write something else — react to \
+what it MEANS, don't just acknowledge that it was received.
+
+TWO CASES:
+
+1. Nothing new was required because of this fact (no second item was \
+given to you). React in 2-4 words and move on — vary it naturally \
+across a conversation, don't reuse the same word every turn: "Right.", \
+"Got it.", "Understood.", "Noted.", "Good,", "Okay —". Do not manufacture \
+a reason to be grateful for an answer that changed nothing.
+
+2. Exactly one new requirement was given to you. Say what it actually \
+MEANS for the citizen, in plain everyday words — never quote the \
+requirement's formal label verbatim (that reads like a document form, \
+not a sentence a person would say). Compress it: "Marriage certificate \
+with a photocopy where it is necessary (to confirm the name after \
+marriage)" becomes something like "you'll need your marriage \
+certificate" — drop the legal/procedural qualifiers, keep the plain \
+fact. If the fact itself already implies something good or convenient \
+(e.g. already holding a passport means one less thing to obtain), you \
+can say so.
+
+(A rare third case — two or more new requirements at once — is handled \
+before you're even asked; you will simply never be given more than one \
+requirement name to work with.)
+
+Keep the whole line under 15 words when possible, never more than one \
+short sentence — this is read on a phone, immediately followed by \
+another question, so it must be quick to skim, not a second thing to \
+read.
+
+Examples (facts -> your line):
+- age = 32, new requirement "Provide fingerprints in person at the Head \
+Office or a Regional Office" -> "32 — so you'll need to give \
+fingerprints in person, which is required for anyone between 16 and 60."
+- holds_passport = true, new requirement "Current passport with a \
+photocopy of the Bio data page." -> "Good — that saves a step, since \
+you'll just submit it with your application."
+- name_changed = false, no new requirement -> "Right."
+- dual_citizen = false, no new requirement -> "Understood."
+- name_changed = true, new requirement "Marriage certificate with a \
+photocopy where it is necessary (to confirm the name after marriage)" \
+-> "Got it — you'll need your marriage certificate too." """
 
 # Backstop against a fee/office slipping through despite never being
 # given to the model — data minimization (the model is never given a
 # fee or office value at all) is the primary safeguard; this is the
 # structural check on top of it.
 _FEE_PATTERN = re.compile(r"\bLKR\b|\bRs\.?\s?\d|\brupees\b", re.IGNORECASE)
+
+# Same data-minimization philosophy, applied to tone: a free-tier model
+# asked not to open with "Thank you" still sometimes does (confirmed
+# during this fix's own live verification). Rather than trust
+# instruction-following alone, a line that slips through with the
+# banned opener is discarded — the next question still gets asked, this
+# is presentation-only — instead of ever showing the citizen the exact
+# form-clerk phrasing this fix exists to remove.
+_BANNED_OPENER_PATTERN = re.compile(
+    r"^\s*(thank you|thanks for|thanks,|i have (recorded|noted) that|let'?s move on)",
+    re.IGNORECASE,
+)
 
 
 class Acknowledgement(BaseModel):
@@ -85,27 +145,56 @@ def build_acknowledgement(
     newly_triggered = _newly_triggered_requirements(db, answers_before, answers_after)
 
     prompt = f"Recorded facts:\n{_fact_lines(recorded_facts)}"
-    if newly_triggered:
-        prompt += "\n\nNewly required because of these facts:\n" + "\n".join(
-            f"- {label}" for label in newly_triggered
+    if len(newly_triggered) == 1:
+        prompt += f"\n\nNewly required because of these facts:\n- {newly_triggered[0]}"
+    elif len(newly_triggered) > 1:
+        # Structural fix, mirroring the fee backstop's own philosophy:
+        # data minimization over trusting instruction-following — a
+        # free-tier model asked not to enumerate a list still sometimes
+        # does. With 2+ new requirements, the model is never given their
+        # names at all, so it is structurally incapable of listing them
+        # regardless of how well it follows the "don't enumerate"
+        # instruction.
+        prompt += (
+            f"\n\n{len(newly_triggered)} new requirements were added because of these "
+            "facts. Do not ask what they are or name any of them — briefly react that "
+            "a bit more is needed now, in the same short, natural style as the examples."
         )
 
-    try:
-        result = structured_completion(
-            JOB,
-            system=SYSTEM_PROMPT,
-            user=prompt,
-            response_model=Acknowledgement,
-            max_tokens=MAX_TOKENS,
+    for _attempt in range(2):
+        try:
+            result = structured_completion(
+                JOB,
+                system=SYSTEM_PROMPT,
+                user=prompt,
+                response_model=Acknowledgement,
+                max_tokens=MAX_TOKENS,
+            )
+            text = result.text
+        except Exception:
+            return None
+
+        if _FEE_PATTERN.search(text):
+            # Should be structurally impossible (the model was never
+            # given a fee value) — if it still happens, fail closed
+            # rather than risk a fabricated or misattributed fee
+            # reaching a citizen. Not worth a retry: a leaked fee is a
+            # data problem, not a phrasing one a second attempt fixes.
+            return None
+
+        if not _BANNED_OPENER_PATTERN.match(text):
+            return text
+        # One retry, nudged explicitly — a free-tier model asked not to
+        # open with "Thank you" still sometimes does; a single retry
+        # with a pointed correction is cheap and usually resolves it
+        # (confirmed during this fix's own live verification) without
+        # falling all the way back to no acknowledgement at all.
+        prompt += (
+            '\n\n(Your previous attempt opened with a banned phrase like "Thank you" '
+            "— try again, reacting to what the fact means, not confirming it was received.)"
         )
-        text = result.text
-    except Exception:
-        return None
 
-    if _FEE_PATTERN.search(text):
-        # Should be structurally impossible (the model was never given a
-        # fee value) — if it still happens, fail closed rather than risk
-        # a fabricated or misattributed fee reaching a citizen.
-        return None
-
-    return text
+    # Both attempts opened with a banned phrase — degrade the same way a
+    # generation failure does: no acknowledgement this turn rather than
+    # showing the exact form-clerk phrasing this fix exists to remove.
+    return None

@@ -133,6 +133,14 @@ def run_message_turn(db: Session, case: Case, message: str) -> ChatOutcome:
         # persistence/serialization path every other assistant reply
         # already uses.
         rag_response = RAGResponse(text=result["scope_gate_message"], citations=[], grounded=True)
+    elif result.get("reask_message"):
+        # CRITICAL BUG FIX (production incident): a pending question
+        # that couldn't be matched deterministically or classified
+        # confidently — never "I don't have that information" (that
+        # implies the agent tried and failed to answer a question; this
+        # is the opposite case, an answer attempt the system couldn't
+        # parse). Same transport convention as greeting/scope-gate.
+        rag_response = RAGResponse(text=result["reask_message"], citations=[], grounded=True)
     elif result.get("should_answer_via_rag"):
         rag_answer = result.get("rag_answer")
         if rag_answer is None:

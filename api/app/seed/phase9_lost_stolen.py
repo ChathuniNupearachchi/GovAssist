@@ -200,12 +200,26 @@ def seed(db: Session) -> None:
     cond_buddhist_priest = make_condition("buddhist_priest", "equals", "true")
     cond_applying_from_sri_lanka = make_condition("applying_from", "equals", "sri_lanka")
     cond_applying_from_abroad = make_condition("applying_from", "equals", "abroad")
+    # Where the loss/theft happened — distinct from applying_from above
+    # (where the citizen is applying from now). Gates reporting and the
+    # NMRP document; applying_from keeps gating the application form/
+    # office (see module docstring).
+    cond_lost_location_sri_lanka = make_condition("lost_location", "equals", "sri_lanka")
+    cond_lost_location_abroad = make_condition("lost_location", "equals", "abroad")
     cond_lost_within_1yr = make_condition("lost_passport_age", "equals", "within_1_year")
     cond_lost_over_1yr = make_condition("lost_passport_age", "equals", "over_1_year")
 
     db.add(
         QuestionCondition(
             question_id=questions["district"].id,
+            condition_id=cond_applying_from_sri_lanka.id,
+            negated=False,
+        )
+    )
+    # photo_district — same gate (item 5 of the intake-parsing fix).
+    db.add(
+        QuestionCondition(
+            question_id=questions["photo_district"].id,
             condition_id=cond_applying_from_sri_lanka.id,
             negated=False,
         )
@@ -222,13 +236,13 @@ def seed(db: Session) -> None:
         {c.attribute for c in [
             cond_age_lt_16, cond_age_lt_61, cond_name_changed, cond_dual_citizen,
             cond_section_19_2, cond_profession_empty, cond_buddhist_priest,
-            cond_applying_from_sri_lanka, cond_lost_within_1yr,
+            cond_applying_from_sri_lanka, cond_lost_location_sri_lanka, cond_lost_within_1yr,
         ]}
     ), "Seed script is missing a Condition for an expected attribute."
 
     # -- Reporting prerequisite (source: pages_e.php?id=12) — domestic
-    # and overseas variants, gated on applying_from, mirroring the
-    # domestic/overseas application-form split's own pattern. Sequenced
+    # and overseas variants, gated on lost_location (where the loss
+    # happened, not applying_from — see module docstring). Sequenced
     # FIRST (before even the photo studio acknowledgement) — design.md's
     # own prerequisite order: report the loss before anything else.
     domestic_reporting = Requirement(
@@ -245,7 +259,7 @@ def seed(db: Session) -> None:
     )
     db.add(domestic_reporting)
     db.flush()
-    _link(db, domestic_reporting, cond_applying_from_sri_lanka, negated=False)
+    _link(db, domestic_reporting, cond_lost_location_sri_lanka, negated=False)
 
     overseas_reporting = Requirement(
         rule_version_id=rv.id,
@@ -269,7 +283,7 @@ def seed(db: Session) -> None:
     )
     db.add(overseas_reporting)
     db.flush()
-    _link(db, overseas_reporting, cond_applying_from_abroad, negated=False)
+    _link(db, overseas_reporting, cond_lost_location_abroad, negated=False)
 
     studio_ack = Requirement(
         rule_version_id=rv.id,
@@ -391,7 +405,10 @@ def seed(db: Session) -> None:
     )
     db.add(nmrp_document)
     db.flush()
-    _link(db, nmrp_document, cond_applying_from_abroad, negated=False)
+    # Gated on lost_location, not applying_from — see module docstring.
+    # An applicant who lost the passport abroad still needs the NMRP
+    # even after returning and applying domestically.
+    _link(db, nmrp_document, cond_lost_location_abroad, negated=False)
 
     new_nic = Requirement(
         rule_version_id=rv.id,

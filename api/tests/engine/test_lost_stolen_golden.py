@@ -27,12 +27,16 @@ def test_lost_stolen_golden_scenario(db, scenario):
 
 
 def test_nmrp_only_required_when_lost_abroad(db):
+    """NMRP tracks `lost_location`, NOT `applying_from` — scenario 6
+    (lost abroad, now applying domestically) is the case that
+    distinguishes them; asserting against applying_from here would
+    reintroduce the bug that prompted separating the two attributes."""
     for scenario in LOST_STOLEN_GOLDEN_SCENARIOS:
         result = resolve_case(db, scenario["answers"], service_code=LOST_STOLEN_SERVICE_CODE)
         labels = {r.label for r in result.requirements}
-        expects_nmrp = scenario["answers"].get("applying_from") == "abroad"
+        expects_nmrp = scenario["answers"].get("lost_location") == "abroad"
         assert (NMRP_LABEL in labels) == expects_nmrp, (
-            f"{scenario['name']}: NMRP presence should match applying_from=='abroad'"
+            f"{scenario['name']}: NMRP presence should match lost_location=='abroad'"
         )
 
 

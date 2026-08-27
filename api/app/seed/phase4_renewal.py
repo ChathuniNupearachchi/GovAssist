@@ -1,16 +1,22 @@
-"""Phase 4 seed data: adult passport renewal and passport amendment.
+"""Phase 4 seed data: adult passport renewal.
 
 Hand-enters the rule content described in the phase-4-rules-engine
 change's proposal.md/design.md into the schema built in Phase 2 (and
 extended in this phase with per-fact source citations and
 RESOLUTION_NOTE). Every fact below was verified directly against the
-extracted text of pages_e.php?id=7, id=8, and id=10 (see design.md's
-Context) before being hand-entered here.
+extracted text of pages_e.php?id=7 and id=8 (see design.md's Context)
+before being hand-entered here.
 
 Idempotent: re-running this script wipes and rebuilds the
-`passport-renewal` and `passport-amendment` services (and the
-`urgent_office_conflict` resolution note) from scratch, so it is safe to
-run repeatedly against a dev database without accumulating duplicates.
+`passport-renewal` service (and the `urgent_office_conflict` resolution
+note) from scratch, so it is safe to run repeatedly against a dev
+database without accumulating duplicates. Also still wipes any
+`passport-amendment` rows for idempotent cleanup (`AMENDMENT_CODE`
+below), but no longer SEEDS that service — `app.seed.phase9_amendment`
+owns it now (Phase 9's amendment implementation: all 6 alteration
+types, applying_from-aware offices, replacing this file's old 2-
+Requirement Change-of-Name-only stub). Always run phase9_amendment's
+seed AFTER this one — `tests/conftest.py` already does.
 
 Run with:  python -m app.seed.phase4_renewal
 """
@@ -145,7 +151,6 @@ def seed(db: Session) -> None:
 
     doc_id8 = _source_document(db, "pages_e.php?id=8")
     doc_id7 = _source_document(db, "pages_e.php?id=7")
-    doc_id10 = _source_document(db, "pages_e.php?id=10")
     doc_id24 = _source_document(db, "pages_e.php?id=24")
     doc_form_pdf = _source_document(db, "applications/passport_application.pdf")
     doc_form_pdf_handfill = _source_document(db, "applications/application.pdf")
@@ -173,13 +178,10 @@ def seed(db: Session) -> None:
     renewal_service = Service(
         code=RENEWAL_CODE, name="Renew an Ordinary Passport", category="passports"
     )
-    amendment_service = Service(
-        code=AMENDMENT_CODE, name="Amend Passport Details", category="passports"
-    )
-    db.add_all([renewal_service, amendment_service])
+    db.add(renewal_service)
     db.flush()
 
-    # -- Rule versions ---------------------------------------------------
+    # -- Rule version ----------------------------------------------------
     now = datetime.now(timezone.utc)
     renewal_rv = RuleVersion(
         service_id=renewal_service.id,
@@ -189,15 +191,7 @@ def seed(db: Session) -> None:
         status="draft",
         verified_at=now,
     )
-    amendment_rv = RuleVersion(
-        service_id=amendment_service.id,
-        source_document_id=doc_id10.id,
-        approved_by=None,
-        version_number=1,
-        status="draft",
-        verified_at=now,
-    )
-    db.add_all([renewal_rv, amendment_rv])
+    db.add(renewal_rv)
     db.flush()
 
     # -- Renewal intake questions ---------------------------------------
@@ -305,6 +299,17 @@ def seed(db: Session) -> None:
             question_id=questions["district"].id,
             condition_id=cond_applying_from_sri_lanka.id,
             negated=False,  # relevant only once applying_from == "sri_lanka"
+        )
+    )
+
+    # photo_district (item 5 of the intake-parsing fix) — same gate as
+    # district itself: an overseas applicant's photo studio is out of
+    # scope for this app's Sri Lankan studio directory.
+    db.add(
+        QuestionCondition(
+            question_id=questions["photo_district"].id,
+            condition_id=cond_applying_from_sri_lanka.id,
+            negated=False,
         )
     )
 
@@ -640,45 +645,21 @@ def seed(db: Session) -> None:
         )
     )
 
-    # -- Amendment service (source: pages_e.php?id=10) ---------------------
-    db.add(
-        FeeRule(
-            rule_version_id=amendment_rv.id,
-            source_document_id=doc_id10.id,
-            base_amount=1200.00,
-            # CHECK constraint requires normal|urgent; amendment has no
-            # urgent/normal split in the source (a single flat fee), so
-            # this is a fixed choice to satisfy the column, not a real
-            # distinction — see design.md.
-            basis="normal",
-        )
-    )
-    db.add_all(
-        [
-            Requirement(
-                rule_version_id=amendment_rv.id,
-                source_document_id=doc_id10.id,
-                label="Passport",
-                kind="document",
-                sequence=1,
-            ),
-            Requirement(
-                rule_version_id=amendment_rv.id,
-                source_document_id=doc_id10.id,
-                label="Marriage certificate (to confirm name change)",
-                kind="document",
-                sequence=2,
-            ),
-        ]
-    )
-
     db.flush()
 
-    # -- Approve both rule versions ---------------------------------------
+    # -- Approve the rule version -------------------------------------
+    # Amendment used to be seeded here too (a flat 2-Requirement stub —
+    # Passport + Marriage certificate, Change of Name only). Phase 9's
+    # amendment implementation replaced it entirely with its own full
+    # service (all 6 alteration types, applying_from-aware offices) —
+    # see `app.seed.phase9_amendment`, which now owns `passport-
+    # amendment`'s Service/RuleVersion/Questions/Requirements end to
+    # end. `_wipe_existing` above still clears AMENDMENT_CODE rows for
+    # idempotent cleanup, but always run phase9_amendment's seed AFTER
+    # this one (see that script's own docstring; `tests/conftest.py`
+    # already does).
     renewal_rv.status = "approved"
     renewal_rv.approved_by = "phase4-seed-script"
-    amendment_rv.status = "approved"
-    amendment_rv.approved_by = "phase4-seed-script"
 
     db.commit()
 
@@ -687,7 +668,7 @@ def main() -> None:
     db = SessionLocal()
     try:
         seed(db)
-        print("Phase 4 renewal + amendment rule data seeded and approved.")
+        print("Phase 4 renewal rule data seeded and approved.")
     finally:
         db.close()
 
