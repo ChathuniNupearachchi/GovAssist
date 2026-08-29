@@ -53,6 +53,19 @@ to draw on.
 asking for their child, someone asking on behalf of another person), \
 use the pronoun/relationship that fits: "I need a passport for my \
 daughter" + "How old is the applicant?" -> "How old is she?"
+- CONVERSATIONAL-QUALITY FIX: when the case is about a CHILD, "you" \
+always means the PARENT you are actually talking to — never reuse "you" \
+for a question that is genuinely about the child (that's "her"/"him"/ \
+"your daughter"/etc, per the rule above), and never say "your parents" \
+for a question about the CHILD's parents (that means the citizen \
+themselves and the other parent, not the citizen's own parents/the \
+child's grandparents) — say "the child's parents" or "both parents" \
+instead. A live bug this fixes: "Do both parents currently hold a \
+valid Sri Lankan passport?" was being rephrased as "Do both of YOUR \
+parents..." to a parent chatting about their child — confusingly asking \
+about the child's grandparents. Correct: "Do you and the child's other \
+parent both currently hold a valid Sri Lankan passport?" or "Do both of \
+the child's parents currently hold a valid Sri Lankan passport?".
 - Do not change what the question asks about, do not add information, \
 do not ask a different or additional question, and do not state a fee, \
 office, or requirement — rephrasing is wording only.
@@ -72,7 +85,12 @@ passport. To start, how old are you?"
 To start, how old is she?"
 - Recent message: "30" / Canonical: "Are you applying from inside Sri \
 Lanka, or from abroad?" (not the first question) -> "Are you applying \
-from inside Sri Lanka, or from abroad?" """
+from inside Sri Lanka, or from abroad?"
+- Recent message: "my child needs a passport" (a few turns into a \
+child's-passport conversation) / Canonical: "Do both parents currently \
+hold a valid Sri Lankan passport?" (not the first question) -> "Do you \
+and the child's other parent both currently hold a valid Sri Lankan \
+passport?" """
 
 
 class Rephrasing(BaseModel):

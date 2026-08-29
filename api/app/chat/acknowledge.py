@@ -111,6 +111,27 @@ _BANNED_OPENER_PATTERN = re.compile(
     re.IGNORECASE,
 )
 
+# Conversational-quality round: the Groq cross-provider fallback (see
+# app.llm.gateway) sometimes trails off with a dash and nothing after
+# it — "Okay —" with no second clause — confirmed live during this
+# fix's own verification. Cheap, safe cleanup rather than a whole
+# retry: strip a trailing em/en-dash or hyphen (with any surrounding
+# whitespace) if nothing meaningful follows it.
+_DANGLING_DASH_PATTERN = re.compile(r"[\s—–-]+$")
+_ENDS_WITH_PUNCTUATION = re.compile(r"[.!?]$")
+
+
+def _clean_acknowledgement_text(text: str) -> str:
+    cleaned = _DANGLING_DASH_PATTERN.sub("", text).rstrip()
+    # This line is always immediately followed by the next question (per
+    # the "reads as one continuous message" requirement) — a missing
+    # full stop reads as a run-on ("Okay What is your job?"), whether or
+    # not a dash was stripped. Guaranteed here rather than trusted to
+    # the model's own output.
+    if cleaned and not _ENDS_WITH_PUNCTUATION.search(cleaned):
+        cleaned += "."
+    return cleaned
+
 
 class Acknowledgement(BaseModel):
     text: str
@@ -121,9 +142,9 @@ def _fact_lines(recorded_facts: dict[str, str]) -> str:
 
 
 def _newly_triggered_requirements(
-    db: Session, answers_before: dict[str, str], answers_after: dict[str, str]
+    db: Session, service_code: str, answers_before: dict[str, str], answers_after: dict[str, str]
 ) -> list[str]:
-    rule_version = _approved_rule_version(db, RENEWAL_SERVICE_CODE)
+    rule_version = _approved_rule_version(db, service_code)
     before_labels = {r.label for r in resolve_requirements(db, rule_version.id, answers_before)}
     after = resolve_requirements(db, rule_version.id, answers_after)
     return [r.label for r in after if r.label not in before_labels]
@@ -134,15 +155,27 @@ def build_acknowledgement(
     recorded_facts: dict[str, str],
     answers_before: dict[str, str],
     answers_after: dict[str, str],
+    service_code: str = RENEWAL_SERVICE_CODE,
 ) -> str | None:
     """Returns an acknowledgement of `recorded_facts`, or None when
     nothing was recorded this turn or acknowledgement generation fails —
     the next question is still asked either way, this is presentation
-    only."""
+    only.
+
+    BUG FIX (conversational-quality round, item 1): `service_code`
+    used to be silently hardcoded to renewal's — for any of the other
+    six services, the before/after diff was computed against RENEWAL's
+    rule version instead of the case's own, so "what's newly required"
+    was simply wrong (comparing an unrelated service's conditions,
+    producing a coincidental or empty diff) every time this ran for a
+    non-renewal case. Defaulted to `RENEWAL_SERVICE_CODE` only so any
+    caller that predates this fix keeps working unchanged; the real
+    call site (`app.graph.build.run_message_turn`) always passes the
+    case's actual `service_code` now."""
     if not recorded_facts:
         return None
 
-    newly_triggered = _newly_triggered_requirements(db, answers_before, answers_after)
+    newly_triggered = _newly_triggered_requirements(db, service_code, answers_before, answers_after)
 
     prompt = f"Recorded facts:\n{_fact_lines(recorded_facts)}"
     if len(newly_triggered) == 1:
@@ -170,7 +203,7 @@ def build_acknowledgement(
                 response_model=Acknowledgement,
                 max_tokens=MAX_TOKENS,
             )
-            text = result.text
+            text = _clean_acknowledgement_text(result.text)
         except Exception:
             return None
 

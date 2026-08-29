@@ -211,11 +211,25 @@ export function ServicesScreen({ navigation, route }: Props) {
             ) : (
               <>
                 {bubbles.length === 0 ? (
-                  <Text style={{ fontSize: fontSize.body, color: colors.textMuted }}>
-                    {activeTab === "ask"
-                      ? "Describe your situation and I'll work out what you need."
-                      : "Starting your conversation…"}
-                  </Text>
+                  activeTab === "ask" ? (
+                    <View style={{ gap: spacing.xs }}>
+                      <Text style={{ fontSize: fontSize.body, color: colors.textPrimary, fontWeight: "600" }}>
+                        Ask about any Immigration & Emigration passport service.
+                      </Text>
+                      <Text style={{ fontSize: fontSize.body, color: colors.textMuted }}>
+                        This covers renewals, new passports, lost or stolen passports, name or
+                        detail amendments, passports for children under 16, and emergency
+                        certificates. Describe your situation in your own words — for example
+                        "my passport was stolen" or "I'm renewing from Australia" — or ask a
+                        specific question like "what's the fee for a new passport?" and I'll
+                        work out what applies to you.
+                      </Text>
+                    </View>
+                  ) : (
+                    <Text style={{ fontSize: fontSize.body, color: colors.textMuted }}>
+                      Starting your conversation…
+                    </Text>
+                  )
                 ) : null}
 
                 {bubbles.map((bubble) => (

@@ -356,8 +356,36 @@ _MATCHERS = {
 # flattened message (not a substring — "I have no job title I want to
 # list" is a real profession-adjacent statement, not a not-applicable
 # marker, so this stays narrow and exact).
+#
+# BUG FIX (conversational-quality round, item 4): a 15-year-old
+# answering "student" (a legitimate, common answer to "what is your
+# job or occupation?" for a minor) was being recorded as their literal
+# profession — a non-empty string, which incorrectly triggered the
+# educational/service certificate requirement (a document meant for an
+# ADULT's stated occupation, not "I am currently in school"). Widened
+# considerably; still whole-message exact matches only, not a blanket
+# substring search, for the same false-positive reason as above.
 _PROFESSION_NOT_APPLICABLE = frozenset(
-    {"none", "no job", "n a", "na", "no profession", "unemployed", "nothing", "not applicable"}
+    {
+        "none", "no job", "n a", "na", "n/a", "no profession", "unemployed", "nothing",
+        "not applicable", "student", "a student", "im a student", "still a student",
+        "school student", "none yet", "no occupation", "not employed", "no employment",
+        "not working", "dont work", "do not work", "no current job", "currently unemployed",
+        "not currently employed", "still studying", "still in school",
+    }
+)
+
+# Same not-applicable meaning, but as a phrase that can appear WITHIN a
+# longer sentence rather than being the entire message — a small,
+# hand-picked set of near-unambiguous negative-employment fragments
+# (never a bare word like "job" or "student" alone, which the exact-
+# match set above already covers for the bare-word case and which as a
+# raw substring would risk exactly the false positive the module
+# docstring above warns about).
+_PROFESSION_NOT_APPLICABLE_FRAGMENTS = (
+    "dont have a job", "do not have a job", "dont have a profession",
+    "do not have a profession", "no job yet", "im a student", "i am a student",
+    "im unemployed", "i am unemployed", "dont currently work", "do not currently work",
 )
 
 # Bug fix (manual QA bug #3): "hi", "help", "passport" and close
@@ -414,9 +442,12 @@ def try_deterministic_match(pending_attribute: str, message: str) -> str | None:
     stripped = message.strip()
 
     if pending_attribute == "profession":
-        if not stripped or _flatten(stripped) in _PROFESSION_NOT_APPLICABLE:
+        flat = _flatten(stripped)
+        if not stripped or flat in _PROFESSION_NOT_APPLICABLE:
             return ""
-        if _looks_like_a_question(stripped, _flatten(stripped)):
+        if any(fragment in flat for fragment in _PROFESSION_NOT_APPLICABLE_FRAGMENTS):
+            return ""
+        if _looks_like_a_question(stripped, flat):
             return None
         return stripped
 

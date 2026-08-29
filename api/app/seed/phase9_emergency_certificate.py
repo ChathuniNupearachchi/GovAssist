@@ -121,6 +121,7 @@ def seed(db: Session) -> None:
     _wipe_existing(db)
 
     doc_id7 = _source_document(db, "pages_e.php?id=7")
+    doc_id9 = _source_document(db, "pages_e.php?id=9")
     doc_id24 = _source_document(db, "pages_e.php?id=24")
     doc_instructions_pdf = _source_document(db, "applications/instructions_english_td.pdf")
     doc_form_pdf = _source_document(db, "applications/passport_application.pdf")
@@ -287,8 +288,13 @@ def seed(db: Session) -> None:
     )
     db.add(studio_ack)
     db.flush()
+    # BUG FIX (conversational-quality round, item 3) — same as
+    # app.seed.phase4_renewal.
+    _link(db, studio_ack, cond_applying_from_sri_lanka, negated=False)
 
-    fingerprints = Requirement(
+    # BUG FIX (seven-corrections round, item 1) — same split as
+    # app.seed.phase4_renewal.
+    fingerprints_domestic = Requirement(
         rule_version_id=rv.id,
         source_document_id=doc_id7.id,
         label=(
@@ -298,10 +304,29 @@ def seed(db: Session) -> None:
         kind="prerequisite",
         sequence=4,
     )
-    db.add(fingerprints)
+    db.add(fingerprints_domestic)
     db.flush()
-    _link(db, fingerprints, cond_age_lt_61, negated=False)
-    _link(db, fingerprints, cond_age_lt_16, negated=True)
+    _link(db, fingerprints_domestic, cond_age_lt_61, negated=False)
+    _link(db, fingerprints_domestic, cond_age_lt_16, negated=True)
+    _link(db, fingerprints_domestic, cond_applying_from_sri_lanka, negated=False)
+
+    fingerprints_overseas = Requirement(
+        rule_version_id=rv.id,
+        source_document_id=doc_id9.id,
+        label=(
+            "On your first arrival in Sri Lanka after your document is "
+            "issued, complete a Biometric Data Acquisition (BDA) form at "
+            "the airport, then report to the Head Office or a Regional "
+            "Office to give your fingerprints"
+        ),
+        kind="step",
+        sequence=4,
+    )
+    db.add(fingerprints_overseas)
+    db.flush()
+    _link(db, fingerprints_overseas, cond_age_lt_61, negated=False)
+    _link(db, fingerprints_overseas, cond_age_lt_16, negated=True)
+    _link(db, fingerprints_overseas, cond_applying_from_abroad, negated=False)
 
     # -- Fee (source: instructions_english_td.pdf (f)(ii)) — flat
     # LKR 500, no urgent tier (shown as "–" in the fee table) and no

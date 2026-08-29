@@ -18,6 +18,14 @@ FINGERPRINTS_LABEL = (
     "Provide fingerprints in person at the Head Office or a Regional "
     "Office (required for applicants aged 16 to 60)"
 )
+# Seven-corrections round, item 1 — see golden_scenarios.py's own
+# FINGERPRINTS_OVERSEAS_LABEL for the full rationale.
+FINGERPRINTS_OVERSEAS_LABEL = (
+    "On your first arrival in Sri Lanka after your document is issued, "
+    "complete a Biometric Data Acquisition (BDA) form at the airport, "
+    "then report to the Head Office or a Regional Office to give your "
+    "fingerprints"
+)
 
 CORE_DOMESTIC = {ELIGIBILITY_NOTE_LABEL, APPLICATION_FORM_LABEL, STUDIO_ACK_LABEL, FINGERPRINTS_LABEL}
 
@@ -43,7 +51,11 @@ EMERGENCY_CERTIFICATE_GOLDEN_SCENARIOS = [
     {
         "name": "4. Applying from abroad — Mission-only offices/form",
         "answers": {"age": "30", "applying_from": "abroad", "district": None},
-        "expected_labels": (CORE_DOMESTIC - {APPLICATION_FORM_LABEL}) | {OVERSEAS_APPLICATION_FORM_LABEL},
+        # Conversational-quality round, item 3: no photo studio
+        # acknowledgement overseas — see golden_scenarios.py's scenario
+        # 9 for the full rationale.
+        "expected_labels": (CORE_DOMESTIC - {APPLICATION_FORM_LABEL, FINGERPRINTS_LABEL, STUDIO_ACK_LABEL})
+        | {OVERSEAS_APPLICATION_FORM_LABEL, FINGERPRINTS_OVERSEAS_LABEL},
         "expected_offices": {"Overseas Sri Lankan Missions"},
     },
 ]

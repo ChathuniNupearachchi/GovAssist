@@ -19,6 +19,7 @@ def test_lost_stolen_golden_scenario(db, scenario):
     assert actual_labels == scenario["expected_labels"], scenario["name"]
 
     assert result.fee.base_amount == scenario["expected_fee"], scenario["name"]
+    assert result.fee.penalty_amount == scenario["expected_penalty"], scenario["name"]
 
     actual_offices = {o.name for o in result.offices.offices}
     assert actual_offices == scenario["expected_offices"], scenario["name"]

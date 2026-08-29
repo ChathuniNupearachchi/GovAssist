@@ -193,6 +193,15 @@ def seed(db: Session) -> None:
             negated=False,
         )
     )
+    # service_basis — BUG FIX (seven-corrections round, item 3): same
+    # gate as app.seed.phase4_renewal, same reasoning.
+    db.add(
+        QuestionCondition(
+            question_id=questions["service_basis"].id,
+            condition_id=cond_applying_from_sri_lanka.id,
+            negated=False,
+        )
+    )
 
     assert EXPECTED_ATTRIBUTES.issubset(
         {c.attribute for c in [
@@ -295,6 +304,9 @@ def seed(db: Session) -> None:
     )
     db.add(studio_ack)
     db.flush()
+    # BUG FIX (conversational-quality round, item 3) — same as
+    # app.seed.phase4_renewal.
+    _link(db, studio_ack, cond_applying_from_sri_lanka, negated=False)
 
     # Child-name-deletion first, if applicable — a prerequisite ACTION,
     # not a document to bring. instructions_english_td.pdf (c)(viii):

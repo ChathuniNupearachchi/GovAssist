@@ -73,6 +73,8 @@ def resolve_fee(
     return ResolvedFee(
         basis=fee_rule.basis,
         base_amount=float(fee_rule.base_amount),
+        currency=fee_rule.currency,
+        penalty_amount=float(fee_rule.penalty_amount) if fee_rule.penalty_amount is not None else None,
         citation=Citation(
             source_document_id=doc.id,
             source_url=doc.source_url,

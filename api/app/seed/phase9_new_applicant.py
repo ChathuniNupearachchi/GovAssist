@@ -23,6 +23,20 @@ differences design.md is explicit about:
    left unconditional/unchanged — this is a service-#2-specific nuance,
    not a renewal bug fix.
 
+BUG FIX (question audit, seven-corrections round, item 2): `name_changed`
+used to be reused verbatim too, alongside `holds_passport` — but "Has
+your name changed since your passport was issued?" presupposes a prior
+passport exactly like `holds_passport` does; a first-time applicant has
+neither. Dropped from `NEW_APPLICANT_QUESTIONS` for the same reason
+`holds_passport` already was. This also retires the marriage-certificate
+Requirement that used to be gated on it here — a first-time applicant
+whose stated name differs from their birth certificate (e.g. a married
+name) is a real, sourced case (id=8's "Marriage certificate... where
+necessary"), but asking that correctly for this service needs different
+question text than renewal's, which this fix doesn't introduce. Known
+scope gap, recorded rather than left silently unreachable behind a
+question that will never be asked.
+
 No amendment-alternative surfacing here (a first-time applicant has
 nothing existing to amend) — `app.engine.resolver.resolve_case` already
 scopes that to `passport-renewal` only via its `service_code` check.
@@ -62,7 +76,6 @@ NEW_APPLICANT_CODE = "passport-new"
 # aren't in this set.
 EXPECTED_ATTRIBUTES = {
     "age",
-    "name_changed",
     "dual_citizen",
     "section_19_2",
     "profession",
@@ -129,7 +142,9 @@ def seed(db: Session) -> None:
 
     doc_id7 = _source_document(db, "pages_e.php?id=7")
     doc_id8 = _source_document(db, "pages_e.php?id=8")
+    doc_id9 = _source_document(db, "pages_e.php?id=9")
     doc_id24 = _source_document(db, "pages_e.php?id=24")
+    doc_om_circular = _source_document(db, "circulars/om_01_2019.pdf")
     doc_form_pdf = _source_document(db, "applications/passport_application.pdf")
     doc_form_pdf_handfill = _source_document(db, "applications/application.pdf")
     doc_instructions_pdf = _source_document(db, "applications/instructions_english_td.pdf")
@@ -178,7 +193,6 @@ def seed(db: Session) -> None:
 
     cond_age_lt_16 = make_condition("age", "lessThan", "16")
     cond_age_lt_61 = make_condition("age", "lessThan", "61")
-    cond_name_changed = make_condition("name_changed", "equals", "true")
     cond_dual_citizen = make_condition("dual_citizen", "equals", "true")
     cond_section_19_2 = make_condition("section_19_2", "equals", "true")
     cond_profession_empty = make_condition("profession", "equals", "")
@@ -203,6 +217,16 @@ def seed(db: Session) -> None:
             negated=False,
         )
     )
+    # service_basis — BUG FIX (seven-corrections round, item 3): same
+    # gate as app.seed.phase4_renewal, same reasoning (see there and
+    # design.md's "Timelines" section for the source-silence note).
+    db.add(
+        QuestionCondition(
+            question_id=questions["service_basis"].id,
+            condition_id=cond_applying_from_sri_lanka.id,
+            negated=False,
+        )
+    )
     # profession relevant only once age >= 16 — same as renewal.
     db.add(
         QuestionCondition(
@@ -214,7 +238,7 @@ def seed(db: Session) -> None:
 
     assert EXPECTED_ATTRIBUTES.issubset(
         {c.attribute for c in [
-            cond_age_lt_16, cond_age_lt_61, cond_name_changed, cond_dual_citizen,
+            cond_age_lt_16, cond_age_lt_61, cond_dual_citizen,
             cond_section_19_2, cond_profession_empty, cond_buddhist_priest,
             cond_applying_from_sri_lanka,
         ]}
@@ -232,6 +256,9 @@ def seed(db: Session) -> None:
     )
     db.add(studio_ack)
     db.flush()
+    # BUG FIX (conversational-quality round, item 3) — same as
+    # app.seed.phase4_renewal.
+    _link(db, studio_ack, cond_applying_from_sri_lanka, negated=False)
 
     # Domestic and overseas application-form Requirements — identical
     # pattern to renewal's own two-Requirement split (see
@@ -306,7 +333,12 @@ def seed(db: Session) -> None:
     db.flush()
     _link(db, overseas_application_form, cond_applying_from_abroad, negated=False)
 
-    fingerprints = Requirement(
+    # BUG FIX (seven-corrections round, item 1) — same split as
+    # app.seed.phase4_renewal: an overseas applicant's fingerprints are
+    # captured on first arrival in Sri Lanka (BDA form at the airport,
+    # then the Head Office or a Regional Office), not as an intake
+    # prerequisite. See that module for the full citation/conflict note.
+    fingerprints_domestic = Requirement(
         rule_version_id=rv.id,
         source_document_id=doc_id7.id,
         label=(
@@ -316,10 +348,29 @@ def seed(db: Session) -> None:
         kind="prerequisite",
         sequence=3,
     )
-    db.add(fingerprints)
+    db.add(fingerprints_domestic)
     db.flush()
-    _link(db, fingerprints, cond_age_lt_61, negated=False)
-    _link(db, fingerprints, cond_age_lt_16, negated=True)
+    _link(db, fingerprints_domestic, cond_age_lt_61, negated=False)
+    _link(db, fingerprints_domestic, cond_age_lt_16, negated=True)
+    _link(db, fingerprints_domestic, cond_applying_from_sri_lanka, negated=False)
+
+    fingerprints_overseas = Requirement(
+        rule_version_id=rv.id,
+        source_document_id=doc_id9.id,
+        label=(
+            "On your first arrival in Sri Lanka after your passport is "
+            "issued, complete a Biometric Data Acquisition (BDA) form at "
+            "the airport, then report to the Head Office or a Regional "
+            "Office to give your fingerprints"
+        ),
+        kind="step",
+        sequence=3,
+    )
+    db.add(fingerprints_overseas)
+    db.flush()
+    _link(db, fingerprints_overseas, cond_age_lt_61, negated=False)
+    _link(db, fingerprints_overseas, cond_age_lt_16, negated=True)
+    _link(db, fingerprints_overseas, cond_applying_from_abroad, negated=False)
 
     new_nic = Requirement(
         rule_version_id=rv.id,
@@ -348,12 +399,6 @@ def seed(db: Session) -> None:
             None,  # gated below via cond_age_lt_16 (negated) — special-cased,
             # not the generic `extra_condition` path (see the loop below)
             11,
-        ),
-        (
-            "Marriage certificate with a photocopy where it is necessary "
-            "(to confirm the name after marriage)",
-            cond_name_changed,
-            13,
         ),
         (
             "Educational Certificate related to the profession and an "
@@ -420,6 +465,13 @@ def seed(db: Session) -> None:
             FeeRule(
                 rule_version_id=rv.id, source_document_id=doc_id8.id,
                 condition_id=cond_age_lt_16.id, base_amount=9000.00, basis="urgent",
+            ),
+            # BUG FIX (seven-corrections round, item 5) — same as
+            # app.seed.phase4_renewal, same source figure and reasoning.
+            FeeRule(
+                rule_version_id=rv.id, source_document_id=doc_om_circular.id,
+                condition_id=cond_applying_from_abroad.id, base_amount=158.00,
+                currency="USD", basis="normal",
             ),
         ]
     )

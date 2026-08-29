@@ -151,7 +151,9 @@ def seed(db: Session) -> None:
 
     doc_id8 = _source_document(db, "pages_e.php?id=8")
     doc_id7 = _source_document(db, "pages_e.php?id=7")
+    doc_id9 = _source_document(db, "pages_e.php?id=9")
     doc_id24 = _source_document(db, "pages_e.php?id=24")
+    doc_om_circular = _source_document(db, "circulars/om_01_2019.pdf")
     doc_form_pdf = _source_document(db, "applications/passport_application.pdf")
     doc_form_pdf_handfill = _source_document(db, "applications/application.pdf")
     doc_instructions_pdf = _source_document(db, "applications/instructions_english_td.pdf")
@@ -289,11 +291,6 @@ def seed(db: Session) -> None:
     # dual_citizen, section_19_2, buddhist_priest, profession) still
     # applies to an overseas applicant per the sources read for this
     # phase — none of id=7/id=8/id=9 states otherwise for those facts.
-    # service_basis (normal/urgent) was considered and deliberately left
-    # ungated too: id=9 is silent on whether one-day service exists for
-    # Mission submissions — asserting it doesn't would be inventing a
-    # fact no source states (this project's own "conflicts kept
-    # surfaced, not resolved" convention — see design.md).
     db.add(
         QuestionCondition(
             question_id=questions["district"].id,
@@ -308,6 +305,26 @@ def seed(db: Session) -> None:
     db.add(
         QuestionCondition(
             question_id=questions["photo_district"].id,
+            condition_id=cond_applying_from_sri_lanka.id,
+            negated=False,
+        )
+    )
+
+    # service_basis (normal/urgent) — BUG FIX (seven-corrections round,
+    # item 3): used to be deliberately left ungated ("id=9 is silent on
+    # whether one-day service exists for Mission submissions — asserting
+    # it doesn't would be inventing a fact"). Corrected: same-day/urgent
+    # service is a domestic counter service (id=8's own urgent-fee rows
+    # are all Head-Office/Regional-Office counter transactions); nothing
+    # in id=9 or the fee circular OM/01/2019 (both checked this round —
+    # see design.md's "Timelines" section) describes a mission
+    # equivalent at all, so there is no tier to ask an overseas
+    # applicant to choose between. The source silence itself is recorded
+    # in design.md rather than inferred into a fact — but a citizen is
+    # still never asked a question with no meaningful answer either way.
+    db.add(
+        QuestionCondition(
+            question_id=questions["service_basis"].id,
             condition_id=cond_applying_from_sri_lanka.id,
             negated=False,
         )
@@ -332,6 +349,15 @@ def seed(db: Session) -> None:
     )
     db.add(studio_ack)
     db.flush()
+    # BUG FIX (conversational-quality round, item 3): used to be
+    # unconditional — authorised photo studios are a Sri Lankan
+    # domestic network (id=8's own text), an overseas applicant through
+    # a foreign mission cannot use one. Checked pages_e.php?id=9 for
+    # what the overseas photograph requirement actually is instead — it
+    # is silent on photographs entirely (no mention anywhere in that
+    # page), so nothing is encoded in its place rather than guessed;
+    # this requirement simply doesn't apply overseas.
+    _link(db, studio_ack, cond_applying_from_sri_lanka, negated=False)
 
     # Application form K-35A — DOMESTIC variant only as of the
     # Downloads-page re-verification (pages_e.php?id=24): gated on
@@ -482,7 +508,20 @@ def seed(db: Session) -> None:
     db.flush()
     _link(db, overseas_application_form, cond_applying_from_abroad, negated=False)
 
-    fingerprints = Requirement(
+    # BUG FIX (seven-corrections round, item 1): fingerprints used to be
+    # ONE unconditional requirement regardless of applying_from, framed
+    # as an intake prerequisite ("provide fingerprints in person") for
+    # every applicant — wrong for an overseas applicant, per pages_e.
+    # php?id=9's own "INSTRUCTION FOR OVERSEAS APPLICANTS" section
+    # (already ingested, doc_id9): fingerprints are NOT collected before
+    # or during the mission application. They're captured on the
+    # applicant's FIRST ARRIVAL in Sri Lanka after the passport is
+    # issued — a Biometric Data Acquisition (BDA) form is completed at
+    # the airport, then the applicant reports to the Head Office or a
+    # Regional Office to give biometric data. Split into two mutually
+    # exclusive requirements on applying_from, matching every other
+    # domestic/overseas split this service already has.
+    fingerprints_domestic = Requirement(
         rule_version_id=renewal_rv.id,
         source_document_id=doc_id7.id,
         label=(
@@ -492,10 +531,37 @@ def seed(db: Session) -> None:
         kind="prerequisite",
         sequence=3,
     )
-    db.add(fingerprints)
+    db.add(fingerprints_domestic)
     db.flush()
-    _link(db, fingerprints, cond_age_lt_61, negated=False)  # age < 61
-    _link(db, fingerprints, cond_age_lt_16, negated=True)  # NOT age < 16  => age >= 16
+    _link(db, fingerprints_domestic, cond_age_lt_61, negated=False)  # age < 61
+    _link(db, fingerprints_domestic, cond_age_lt_16, negated=True)  # NOT age < 16  => age >= 16
+    _link(db, fingerprints_domestic, cond_applying_from_sri_lanka, negated=False)
+
+    # Cross-checked against pages_e.php?id=9's own office list for this
+    # step: Head Office, Matara, Kandy, Vavuniya, Kurunegala — Jaffna is
+    # absent there, unlike the Regional Office list this service uses
+    # everywhere else (which includes Jaffna). That's an open conflict
+    # in the department's own sources, not a project error — kept
+    # surfaced in the label's own wording (generic "a Regional Office",
+    # not id=9's narrower five-office list) rather than silently
+    # resolved either way. See design.md's "BDA office list conflict".
+    fingerprints_overseas = Requirement(
+        rule_version_id=renewal_rv.id,
+        source_document_id=doc_id9.id,
+        label=(
+            "On your first arrival in Sri Lanka after your passport is "
+            "issued, complete a Biometric Data Acquisition (BDA) form at "
+            "the airport, then report to the Head Office or a Regional "
+            "Office to give your fingerprints"
+        ),
+        kind="step",
+        sequence=3,
+    )
+    db.add(fingerprints_overseas)
+    db.flush()
+    _link(db, fingerprints_overseas, cond_age_lt_61, negated=False)
+    _link(db, fingerprints_overseas, cond_age_lt_16, negated=True)
+    _link(db, fingerprints_overseas, cond_applying_from_abroad, negated=False)
 
     new_nic = Requirement(
         rule_version_id=renewal_rv.id,
@@ -621,6 +687,28 @@ def seed(db: Session) -> None:
                 condition_id=cond_age_lt_16.id,
                 base_amount=9000.00,
                 basis="urgent",
+            ),
+            # BUG FIX (seven-corrections round, item 5): an overseas
+            # applicant used to fall through to the domestic LKR 10,000
+            # unconditional row above — there was no applying_from-
+            # conditional fee tier at all. Source: OM/01/2019's own
+            # "Revised Charges for Issuance of Sri Lankan Travel
+            # Documents" table, row 01 "All Countries passport" — US$158,
+            # verified by two independent OCR passes (Tesseract and
+            # Gemini vision agreed on every figure in this table) before
+            # being encoded here. `basis="normal"` only — item 3's own
+            # fix means service_basis is never asked/recorded for an
+            # overseas applicant, so `resolve_fee`'s basis lookup always
+            # falls back to "normal" for this case; there is no urgent
+            # tier in the source for a mission application to encode
+            # under "urgent" instead (see design.md's "Timelines" note).
+            FeeRule(
+                rule_version_id=renewal_rv.id,
+                source_document_id=doc_om_circular.id,
+                condition_id=cond_applying_from_abroad.id,
+                base_amount=158.00,
+                currency="USD",
+                basis="normal",
             ),
         ]
     )

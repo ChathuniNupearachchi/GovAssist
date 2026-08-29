@@ -130,15 +130,26 @@ RENEWAL_QUESTIONS: list[tuple[str, str, str, int, str | None]] = [
 # wording (kept in ATTRIBUTE_BY_PROMPT/next_question/deterministic.py
 # unchanged — no new question text to maintain in three places) rather
 # than a hand-duplicated list that could silently drift from renewal's.
-# The one structural difference: no `holds_passport` question at all —
-# a first-time applicant has no prior passport to hold by definition,
-# so there's no fact to ask and no CURRENT_PASSPORT-equivalent document
-# Requirement (see `app.seed.phase9_new_applicant`). Sequence renumbered
-# contiguously after removing it.
+#
+# Two questions are dropped, not just `holds_passport`. BUG FIX (question
+# audit, item 2 of this correction round): `name_changed`'s prompt is
+# "Has your name changed since your passport was issued?" — that
+# presupposes a prior passport a first-time applicant by definition
+# doesn't have, exactly like `holds_passport`. Both are dropped for the
+# same reason; neither is meaningful here. This also retires the
+# marriage-certificate Requirement that used to be gated on
+# `name_changed` for this service (see `app.seed.phase9_new_applicant`)
+# — a first-time applicant whose name differs from their birth
+# certificate (e.g. a married name) is a real, sourced case
+# (id=8's "Marriage certificate... where necessary"), but re-asking it
+# correctly for this service (without presupposing a prior passport) is
+# new question text this correction doesn't introduce; recorded as a
+# known scope gap here rather than silently left half-wired to a
+# question that will never fire.
 NEW_APPLICANT_QUESTIONS: list[tuple[str, str, str, int, str | None]] = [
     (attribute, prompt, answer_type, index, hint)
     for index, (attribute, prompt, answer_type, _sequence, hint) in enumerate(
-        (q for q in RENEWAL_QUESTIONS if q[0] != "holds_passport"),
+        (q for q in RENEWAL_QUESTIONS if q[0] not in ("holds_passport", "name_changed")),
         start=1,
     )
 ]

@@ -146,3 +146,17 @@ export type StudioResolution = {
   studios: Studio[];
   receipt_note: string;
 };
+
+// --- Item 7: user accounts and saved plans ---
+
+export type AuthToken = {
+  access_token: string;
+  token_type: string;
+};
+
+export type SavedPlan = {
+  id: string;
+  case_id: string;
+  label: string;
+  created_at: string;
+};

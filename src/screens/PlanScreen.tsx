@@ -9,8 +9,11 @@ import { Card } from "../components/Card";
 import { ChecklistItem } from "../components/ChecklistItem";
 import { PlanHeader } from "../components/PlanHeader";
 import { SourceCitation } from "../components/SourceCitation";
+import { SavePlanModal } from "../components/SavePlanModal";
+import { savePlan } from "../api/client";
 import type { Requirement, RequirementKind } from "../api/types";
 import { formatCitation } from "../utils/citation";
+import { useAuthStore } from "../store/authStore";
 import { useDeviceStore } from "../store/deviceStore";
 import { usePlanStore } from "../store/planStore";
 import { colors, spacing, fontSize, radius } from "../theme/tokens";
@@ -46,6 +49,29 @@ export function PlanScreen({ navigation }: Props) {
   const loadStudios = usePlanStore((s) => s.loadStudios);
 
   const [collected, setCollected] = useState<Record<string, boolean>>({});
+  const [saveModalVisible, setSaveModalVisible] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [savedMessage, setSavedMessage] = useState<string | null>(null);
+
+  const authToken = useAuthStore((s) => s.token);
+
+  const handleConfirmSave = async (label: string) => {
+    if (!authToken || !caseId) return;
+    const trimmed = label.trim();
+    if (!trimmed) return;
+    setSaving(true);
+    setSaveError(null);
+    try {
+      await savePlan(authToken, caseId, trimmed);
+      setSaving(false);
+      setSaveModalVisible(false);
+      setSavedMessage(`Saved as "${trimmed}"`);
+    } catch {
+      setSaving(false);
+      setSaveError("Couldn't save this plan. Try again.");
+    }
+  };
 
   useEffect(() => {
     if (caseId) {
@@ -191,7 +217,16 @@ export function PlanScreen({ navigation }: Props) {
         />
 
         <View style={{ gap: spacing.sm }}>
-          <Button label="Save plan" onPress={() => {}} fullWidth />
+          {authToken ? (
+            <>
+              <Button label="Save plan" onPress={() => setSaveModalVisible(true)} fullWidth />
+              {savedMessage ? (
+                <Text style={{ fontSize: fontSize.caption, color: colors.success, textAlign: "center" }}>
+                  {savedMessage}
+                </Text>
+              ) : null}
+            </>
+          ) : null}
           <Button
             label="Ask about any item"
             onPress={() => navigation.navigate("Services", { initialTab: "ask" })}
@@ -200,6 +235,14 @@ export function PlanScreen({ navigation }: Props) {
           />
         </View>
       </ScrollView>
+
+      <SavePlanModal
+        visible={saveModalVisible}
+        saving={saving}
+        error={saveError}
+        onCancel={() => setSaveModalVisible(false)}
+        onConfirm={handleConfirmSave}
+      />
     </SafeAreaView>
   );
 }

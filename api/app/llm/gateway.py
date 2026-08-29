@@ -104,15 +104,30 @@ _GEMINI_API_KEYS = [
 ]
 
 # Cross-provider fallback per job, tried once every Gemini key above is
-# rate-limited. Groq's free tier for rephrase by default (a different
-# company's infrastructure — a Gemini-wide 429 doesn't take this down
-# too); empty for any job not listed means no fallback, matching this
-# module's original "raise straight through" behavior. `classify` keeps
-# a fallback too, in case Claude itself ever rate-limits — harmless
-# safety net, not the primary path.
+# rate-limited. Groq's free tier for rephrase/acknowledge by default (a
+# different company's infrastructure — a Gemini-wide 429 doesn't take
+# this down too); empty for any job not listed means no fallback,
+# matching this module's original "raise straight through" behavior.
+# `classify` keeps a fallback too, in case Claude itself ever
+# rate-limits — harmless safety net, not the primary path.
+#
+# BUG FIX (conversational-quality round): the model name here
+# (`llama-3.3-70b-versatile`) no longer exists on Groq's API at all —
+# confirmed directly against `GET /openai/v1/models`, Groq has moved
+# off that Llama lineup entirely. This meant the fallback was silently
+# broken (every fallback attempt 404'd) for as long as it's been unused
+# — invisible until BOTH Gemini keys were rate-limited at once, which
+# is exactly what surfaced it here: rephrase/acknowledge degraded to
+# their canonical-text/no-acknowledgement fallbacks even though a
+# working cross-provider fallback should have caught it first. `gpt-
+# oss-120b`, verified directly against this project's own rephrase
+# prompt before adopting it. `acknowledge` gets the same fallback now
+# too — it never had one before this fix, despite being exactly the
+# same free-tier-dependent, citizen-facing-adjacent job as rephrase.
 _DEFAULT_FALLBACK_MODEL_BY_JOB = {
-    "classify": "groq/llama-3.3-70b-versatile",
-    "rephrase": "groq/llama-3.3-70b-versatile",
+    "classify": "groq/openai/gpt-oss-120b",
+    "rephrase": "groq/openai/gpt-oss-120b",
+    "acknowledge": "groq/openai/gpt-oss-120b",
 }
 
 # Per-job default overrides to `DEFAULT_MODEL` — CRITICAL BUG FIX

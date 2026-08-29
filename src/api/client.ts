@@ -1,10 +1,12 @@
 import { API_BASE_URL } from "./config";
 import { ServerError, classifyFetchFailure } from "./errors";
 import type {
+  AuthToken,
   CaseResolution,
   ChatMessageRequest,
   ChatMessageResponse,
   Question,
+  SavedPlan,
   Service,
   StudioResolution,
   Transcript,
@@ -121,4 +123,86 @@ export async function getTranscript(deviceRef: string): Promise<Transcript> {
 
 export async function getStudios(district: string): Promise<StudioResolution> {
   return getJson<StudioResolution>(`/studios?district=${encodeURIComponent(district)}`);
+}
+
+// --- Item 7: user accounts and saved plans ---
+
+/**
+ * A 409 (duplicate email) and a 422 (bad email/short password) are
+ * expected, meaningful outcomes a signup form displays inline — not
+ * failures — so this returns a discriminated result the same way
+ * `postResolve`'s 409 does, rather than throwing for them.
+ */
+export type SignUpResult = { ok: true; token: AuthToken } | { ok: false; message: string };
+
+export async function signUp(email: string, password: string): Promise<SignUpResult> {
+  const response = await request("/auth/signup", {
+    method: "POST",
+    body: JSON.stringify({ email, password }),
+  });
+  if (response.status === 409 || response.status === 422) {
+    const body = await safeJson(response);
+    return { ok: false, message: body?.detail ?? "Couldn't create that account." };
+  }
+  if (!response.ok) {
+    const body = await safeJson(response);
+    throw new UnexpectedResponseError(response.status, body?.detail);
+  }
+  return { ok: true, token: (await response.json()) as AuthToken };
+}
+
+/** A 401 (wrong email/password) is likewise an expected outcome, not a failure. */
+export type SignInResult = { ok: true; token: AuthToken } | { ok: false; message: string };
+
+export async function signIn(email: string, password: string): Promise<SignInResult> {
+  const response = await request("/auth/signin", {
+    method: "POST",
+    body: JSON.stringify({ email, password }),
+  });
+  if (response.status === 401) {
+    const body = await safeJson(response);
+    return { ok: false, message: body?.detail ?? "Incorrect email or password." };
+  }
+  if (!response.ok) {
+    const body = await safeJson(response);
+    throw new UnexpectedResponseError(response.status, body?.detail);
+  }
+  return { ok: true, token: (await response.json()) as AuthToken };
+}
+
+function _authHeaders(token: string): Record<string, string> {
+  return { Authorization: `Bearer ${token}` };
+}
+
+export async function savePlan(token: string, caseId: string, label: string): Promise<SavedPlan> {
+  const response = await request("/plans/save", {
+    method: "POST",
+    headers: _authHeaders(token),
+    body: JSON.stringify({ case_id: caseId, label }),
+  });
+  if (!response.ok) {
+    const body = await safeJson(response);
+    throw new UnexpectedResponseError(response.status, body?.detail);
+  }
+  return (await response.json()) as SavedPlan;
+}
+
+export async function listPlans(token: string): Promise<SavedPlan[]> {
+  const response = await request("/plans", { headers: _authHeaders(token) });
+  if (!response.ok) {
+    const body = await safeJson(response);
+    throw new UnexpectedResponseError(response.status, body?.detail);
+  }
+  return (await response.json()) as SavedPlan[];
+}
+
+export async function deletePlan(token: string, planId: string): Promise<void> {
+  const response = await request(`/plans/${planId}`, {
+    method: "DELETE",
+    headers: _authHeaders(token),
+  });
+  if (!response.ok) {
+    const body = await safeJson(response);
+    throw new UnexpectedResponseError(response.status, body?.detail);
+  }
 }
