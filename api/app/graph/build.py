@@ -170,7 +170,8 @@ def run_message_turn(db: Session, case: Case, message: str) -> ChatOutcome:
 
     answers_after = result.get("answers_after") or result.get("answers_before", {})
     acknowledgement = build_acknowledgement(
-        db, result.get("extracted", {}), result.get("answers_before", {}), answers_after
+        db, result.get("extracted", {}), result.get("answers_before", {}), answers_after,
+        service_code=case.service.code,
     )
 
     next_pending_id = result.get("next_pending_question_id")

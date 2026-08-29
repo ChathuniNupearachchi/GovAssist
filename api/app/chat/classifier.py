@@ -92,7 +92,14 @@ Classify the message into:
   attributes and their value conventions —
   age (a bare number as a string), holds_passport/name_changed/
   dual_citizen/section_19_2/buddhist_priest ("true" or "false"),
-  profession (free text), district (a Sri Lankan district name — where
+  profession (free text naming an actual occupation, e.g. "teacher" or
+  "engineer" — but extract profession as an EMPTY STRING, not the
+  literal words, when the citizen states they have no job/occupation:
+  "unemployed", "no job", "none", "student", "still in school", and
+  similar all mean no profession, not a profession called "student" —
+  a stated profession and "I currently have none" are both real facts,
+  or leave it unset if the message doesn't address this at all),
+  district (a Sri Lankan district name — where
   the citizen is applying from), photo_district (a Sri Lankan district
   name — only when a separate question about where the citizen will
   take their passport PHOTOGRAPH is pending; this can differ from

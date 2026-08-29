@@ -23,6 +23,14 @@ FINGERPRINTS_LABEL = (
     "Provide fingerprints in person at the Head Office or a Regional "
     "Office (required for applicants aged 16 to 60)"
 )
+# Seven-corrections round, item 1 — see golden_scenarios.py's own
+# FINGERPRINTS_OVERSEAS_LABEL for the full rationale.
+FINGERPRINTS_OVERSEAS_LABEL = (
+    "On your first arrival in Sri Lanka after your passport is issued, "
+    "complete a Biometric Data Acquisition (BDA) form at the airport, "
+    "then report to the Head Office or a Regional Office to give your "
+    "fingerprints"
+)
 APPLICATION_FORM_LABEL = "Completed application form K-35A"
 OVERSEAS_APPLICATION_FORM_LABEL = "Completed Overseas Missions Passport Application form"
 BIRTH_CERT_LABEL = "Original Birth Certificate of the applicant with a photocopy."
@@ -69,8 +77,13 @@ NEW_APPLICANT_GOLDEN_SCENARIOS = [
     {
         "name": "3. Applying from abroad — Mission-only offices and form",
         "answers": {**BASE, "age": "30", "district": None, "applying_from": "abroad"},
-        "expected_labels": (CORE_ADULT - {APPLICATION_FORM_LABEL}) | {OVERSEAS_APPLICATION_FORM_LABEL},
-        "expected_fee": 10000.00,
+        # Conversational-quality round, item 3: no photo studio
+        # acknowledgement overseas.
+        "expected_labels": (CORE_ADULT - {APPLICATION_FORM_LABEL, FINGERPRINTS_LABEL, "Photo studio acknowledgement"})
+        | {OVERSEAS_APPLICATION_FORM_LABEL, FINGERPRINTS_OVERSEAS_LABEL},
+        # Seven-corrections round, item 5.
+        "expected_fee": 158.00,
+        "expected_currency": "USD",
         "expected_offices": {"Overseas Sri Lankan Missions"},
         "expect_scope_gate": False,
     },
@@ -99,16 +112,23 @@ NEW_APPLICANT_GOLDEN_SCENARIOS = [
         "expect_scope_gate": False,
     },
     {
-        "name": "7. Name changed — marriage cert present, no amendment alternative",
+        # Seven-corrections round, item 2: name_changed is no longer part
+        # of this service's question set at all ("Has your name changed
+        # SINCE YOUR PASSPORT WAS ISSUED?" presupposes a prior passport a
+        # first-time applicant doesn't have — see
+        # app.engine.renewal_intake's NEW_APPLICANT_QUESTIONS comment).
+        # A stray "name_changed" answer (e.g. leftover from a prior
+        # service in the same conversation) must have NO effect here —
+        # no marriage certificate, same core set as scenario 1. This
+        # scenario used to expect the opposite; rewritten to lock in the
+        # corrected behavior rather than deleted, so a regression back
+        # to the old wholesale-reuse-from-renewal bug would be caught.
+        "name": "7. A stray name_changed answer has no effect (item 2 regression)",
         "answers": {**BASE, "age": "30", "district": "Colombo", "photo_district": "Colombo", "name_changed": "true"},
-        "expected_labels": CORE_ADULT | {MARRIAGE_CERT_LABEL},
+        "expected_labels": CORE_ADULT,
         "expected_fee": 10000.00,
         "expected_offices": {"Head Office"},
         "expect_scope_gate": False,
-        # The one explicit non-parity check with renewal: a first-time
-        # applicant has nothing existing to amend, so no
-        # amendment_alternative regardless of name_changed — see
-        # app.engine.resolver.resolve_case's service_code check.
         "expect_amendment_alternative": False,
     },
     {

@@ -25,3 +25,5 @@ pytesseract==0.3.13
 PyMuPDF==1.28.2
 Pillow==12.3.0
 langfuse==4.14.4
+bcrypt==5.0.0
+PyJWT==2.13.0

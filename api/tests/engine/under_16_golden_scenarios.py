@@ -155,7 +155,9 @@ UNDER_16_GOLDEN_SCENARIOS = [
             **BASE, "age": "10", "district": None, "applying_from": "abroad",
             "validity_period": "10_year",
         },
-        "expected_labels": (CORE - {APPLICATION_FORM_LABEL}) | {OVERSEAS_APPLICATION_FORM_LABEL},
+        # Conversational-quality round, item 3: no photo studio
+        # acknowledgement overseas.
+        "expected_labels": (CORE - {APPLICATION_FORM_LABEL, STUDIO_ACK_LABEL}) | {OVERSEAS_APPLICATION_FORM_LABEL},
         "expected_fee": 10000.00,
         "expected_offices": {"Overseas Sri Lankan Missions"},
     },
@@ -168,8 +170,11 @@ UNDER_16_GOLDEN_SCENARIOS = [
             "parents_hold_passport": "false", "child_previously_in_parent_passport": "true",
             "parent_circumstance": "deceased", "child_adopted": "true", "child_born_overseas": "true",
         },
+        # Conversational-quality round, item 3: no photo studio
+        # acknowledgement overseas (STUDIO_ACK_LABEL dropped from this
+        # set — it used to be included here).
         "expected_labels": {
-            BOTH_PARENTS_ATTEND_LABEL, OVERSEAS_APPLICATION_FORM_LABEL, STUDIO_ACK_LABEL,
+            BOTH_PARENTS_ATTEND_LABEL, OVERSEAS_APPLICATION_FORM_LABEL,
             BIRTH_CERT_LABEL, PARENTS_NO_PASSPORT_LABEL, CONSENT_LETTER_LABEL, CURRENT_PASSPORT_LABEL,
             DELETION_FIRST_LABEL, DECEASED_LABEL, ADOPTION_LABEL, CITIZENSHIP_CERT_LABEL,
         },

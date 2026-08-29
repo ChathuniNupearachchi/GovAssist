@@ -7,3 +7,6 @@ export { StatusPill } from "./StatusPill";
 export { SourceCitation } from "./SourceCitation";
 export { ShieldLogo } from "./ShieldLogo";
 export { GoogleIcon } from "./GoogleIcon";
+export { SignUpModal } from "./SignUpModal";
+export { AccountDrawer } from "./AccountDrawer";
+export { UserMenuButton } from "./UserMenuButton";

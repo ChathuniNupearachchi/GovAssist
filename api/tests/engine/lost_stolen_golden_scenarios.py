@@ -29,6 +29,14 @@ FINGERPRINTS_LABEL = (
     "Provide fingerprints in person at the Head Office or a Regional "
     "Office (required for applicants aged 16 to 60)"
 )
+# Seven-corrections round, item 1 — see golden_scenarios.py's own
+# FINGERPRINTS_OVERSEAS_LABEL for the full rationale.
+FINGERPRINTS_OVERSEAS_LABEL = (
+    "On your first arrival in Sri Lanka after your passport is issued, "
+    "complete a Biometric Data Acquisition (BDA) form at the airport, "
+    "then report to the Head Office or a Regional Office to give your "
+    "fingerprints"
+)
 APPLICATION_FORM_LABEL = "Completed application form K-35A"
 OVERSEAS_APPLICATION_FORM_LABEL = "Completed Overseas Missions Passport Application form"
 POLICE_COMPLAINT_LABEL = "Original of the police complaint, including the lost passport number"
@@ -57,8 +65,11 @@ CORE_DOMESTIC = {
     "Photo studio acknowledgement", APPLICATION_FORM_LABEL, FINGERPRINTS_LABEL,
     BIRTH_CERT_LABEL, NIC_LABEL, POLICE_COMPLAINT_LABEL, DOMESTIC_REPORTING_LABEL,
 }
+# Conversational-quality round, item 3: no photo studio acknowledgement
+# overseas — dropped, not swapped for anything (see golden_scenarios.py's
+# scenario 9 for the full rationale).
 CORE_OVERSEAS = {
-    "Photo studio acknowledgement", OVERSEAS_APPLICATION_FORM_LABEL, FINGERPRINTS_LABEL,
+    OVERSEAS_APPLICATION_FORM_LABEL, FINGERPRINTS_OVERSEAS_LABEL,
     BIRTH_CERT_LABEL, NIC_LABEL, POLICE_COMPLAINT_LABEL, OVERSEAS_REPORTING_LABEL, NMRP_LABEL,
 }
 
@@ -67,14 +78,16 @@ LOST_STOLEN_GOLDEN_SCENARIOS = [
         "name": "1. Domestic, lost within a year, normal",
         "answers": {**BASE, "age": "30", "district": "Colombo", "photo_district": "Colombo", "lost_passport_age": "within_1_year"},
         "expected_labels": CORE_DOMESTIC,
-        "expected_fee": 30000.00,  # 10,000 base + 20,000 penalty
+        "expected_fee": 10000.00,  # base only; penalty shown separately
+        "expected_penalty": 20000.00,
         "expected_offices": {"Head Office"},
     },
     {
         "name": "2. Domestic, lost over a year ago, normal",
         "answers": {**BASE, "age": "30", "district": "Colombo", "photo_district": "Colombo", "lost_passport_age": "over_1_year"},
         "expected_labels": CORE_DOMESTIC,
-        "expected_fee": 25000.00,  # 10,000 base + 15,000 penalty
+        "expected_fee": 10000.00,
+        "expected_penalty": 15000.00,
         "expected_offices": {"Head Office"},
     },
     {
@@ -84,7 +97,8 @@ LOST_STOLEN_GOLDEN_SCENARIOS = [
             "lost_passport_age": "within_1_year", "service_basis": "urgent",
         },
         "expected_labels": CORE_DOMESTIC,
-        "expected_fee": 40000.00,  # 20,000 base + 20,000 penalty
+        "expected_fee": 20000.00,
+        "expected_penalty": 20000.00,
         "expected_offices": {"Head Office"},
     },
     {
@@ -94,7 +108,8 @@ LOST_STOLEN_GOLDEN_SCENARIOS = [
             "lost_location": "abroad", "lost_passport_age": "over_1_year",
         },
         "expected_labels": CORE_OVERSEAS,
-        "expected_fee": 25000.00,
+        "expected_fee": 10000.00,
+        "expected_penalty": 15000.00,
         "expected_offices": {"Overseas Sri Lankan Missions"},
     },
     {
@@ -104,7 +119,8 @@ LOST_STOLEN_GOLDEN_SCENARIOS = [
             "lost_passport_age": "within_1_year",
         },
         "expected_labels": CORE_DOMESTIC | {MARRIAGE_CERT_LABEL},
-        "expected_fee": 30000.00,
+        "expected_fee": 10000.00,
+        "expected_penalty": 20000.00,
         "expected_offices": {"Head Office"},
     },
     {
@@ -124,7 +140,8 @@ LOST_STOLEN_GOLDEN_SCENARIOS = [
             BIRTH_CERT_LABEL, NIC_LABEL, POLICE_COMPLAINT_LABEL, OVERSEAS_REPORTING_LABEL,
             NMRP_LABEL,
         },
-        "expected_fee": 30000.00,
+        "expected_fee": 10000.00,
+        "expected_penalty": 20000.00,
         "expected_offices": {"Head Office"},
     },
 ]

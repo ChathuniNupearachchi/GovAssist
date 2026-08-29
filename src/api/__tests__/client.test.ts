@@ -1,5 +1,5 @@
 import * as Network from "expo-network";
-import { getServices, postResolve, UnexpectedResponseError } from "../client";
+import { deletePlan, getServices, listPlans, postResolve, savePlan, signIn, signUp, UnexpectedResponseError } from "../client";
 import { NetworkError, ServerError, UnreachableError } from "../errors";
 
 jest.mock("expo-network", () => ({
@@ -77,5 +77,64 @@ describe("client request classification", () => {
     const result = await postResolve("case-1");
 
     expect(result).toEqual({ ready: true, resolution });
+  });
+
+  // --- Item 7: user accounts and saved plans ---
+
+  it("signUp: a 409 (duplicate email) becomes a not-ok result, not a thrown error", async () => {
+    global.fetch = jest.fn().mockResolvedValue(jsonResponse(409, { detail: "An account with this email already exists" }));
+
+    const result = await signUp("taken@example.com", "hunter22");
+
+    expect(result).toEqual({ ok: false, message: "An account with this email already exists" });
+  });
+
+  it("signUp: a 200 becomes an ok result carrying the token", async () => {
+    global.fetch = jest.fn().mockResolvedValue(jsonResponse(200, { access_token: "abc", token_type: "bearer" }));
+
+    const result = await signUp("new@example.com", "hunter22");
+
+    expect(result).toEqual({ ok: true, token: { access_token: "abc", token_type: "bearer" } });
+  });
+
+  it("signIn: a 401 becomes a not-ok result, not a thrown error", async () => {
+    global.fetch = jest.fn().mockResolvedValue(jsonResponse(401, { detail: "Incorrect email or password" }));
+
+    const result = await signIn("someone@example.com", "wrong");
+
+    expect(result).toEqual({ ok: false, message: "Incorrect email or password" });
+  });
+
+  it("signIn: a 200 becomes an ok result carrying the token", async () => {
+    global.fetch = jest.fn().mockResolvedValue(jsonResponse(200, { access_token: "abc", token_type: "bearer" }));
+
+    const result = await signIn("someone@example.com", "hunter22");
+
+    expect(result).toEqual({ ok: true, token: { access_token: "abc", token_type: "bearer" } });
+  });
+
+  it("savePlan sends the bearer token and returns the saved plan", async () => {
+    const savedPlan = { id: "p1", case_id: "c1", label: "My plan", created_at: "2026-01-01T00:00:00Z" };
+    const fetchMock = jest.fn().mockResolvedValue(jsonResponse(200, savedPlan));
+    global.fetch = fetchMock;
+
+    const result = await savePlan("token-abc", "c1", "My plan");
+
+    expect(result).toEqual(savedPlan);
+    const [, init] = fetchMock.mock.calls[0];
+    expect(init.headers.Authorization).toBe("Bearer token-abc");
+  });
+
+  it("listPlans returns the array of saved plans", async () => {
+    const plans = [{ id: "p1", case_id: "c1", label: "My plan", created_at: "2026-01-01T00:00:00Z" }];
+    global.fetch = jest.fn().mockResolvedValue(jsonResponse(200, plans));
+
+    await expect(listPlans("token-abc")).resolves.toEqual(plans);
+  });
+
+  it("deletePlan resolves with no value on success", async () => {
+    global.fetch = jest.fn().mockResolvedValue(jsonResponse(204, null));
+
+    await expect(deletePlan("token-abc", "p1")).resolves.toBeUndefined();
   });
 });

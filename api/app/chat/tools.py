@@ -63,6 +63,8 @@ def _fee_dict(fee: ResolvedFee | None) -> dict[str, Any] | None:
     return {
         "basis": fee.basis,
         "base_amount": fee.base_amount,
+        "currency": fee.currency,
+        "penalty_amount": fee.penalty_amount,
         "citation": _citation_dict(fee.citation),
     }
 

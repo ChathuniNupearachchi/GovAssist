@@ -530,6 +530,21 @@ reasonably read against the stated weekday-only, holiday-excluded
 office hours (`id=7` seq 8), but no source spells out the definition
 explicitly — a reasonable inference, not a direct citation.
 
+**Seven-corrections round, item 3**: whether a normal/urgent service-
+tier distinction exists for a mission application at all — checked
+against both `id=9` and the fee circular `OM/01/2019` (ingested this
+round). Neither states anything about it: `id=9` covers the mission
+application procedure and the fingerprint/BDA process, `OM/01/2019` is
+purely a per-service-type fee schedule (passport/NMRP/endorsement/
+validity-extension), and neither mentions same-day, urgent, or any
+other tiering for a mission submission. Recorded here rather than
+inferred either way — the app does not ask an overseas applicant the
+urgency question (id=9's own text: applications are lodged at a
+mission and "processed by the Overseas Missions Branch at the Head
+Office," with no stated fast-track path), but this is an absence-of-
+evidence decision, not a sourced "no" — if a mission urgent tier is
+confirmed later, this note is where to update it.
+
 ### Collection
 
 **Partially answered, Downloads-page re-verification**:

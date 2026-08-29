@@ -68,6 +68,19 @@ class RequirementOut(BaseModel):
 class FeeOut(BaseModel):
     basis: str
     base_amount: float
+    # Seven-corrections round, item 5 — "LKR" for every fee this app
+    # quoted before this fix; a genuinely different currency (USD, for
+    # an overseas applicant's fee, per the circular) from here on. Any
+    # client rendering a fee must read this field, not assume LKR.
+    currency: str
+    # Conversational-quality round, item 6's own demo-scenario finding
+    # — non-null only for a lost/stolen case with a penalty tier
+    # applied. `base_amount` is always the genuine base fee alone; a
+    # citizen-facing total is `base_amount + (penalty_amount or 0)`,
+    # computed by whoever renders it (never pre-summed server-side) so
+    # the breakdown itself is always visible, not folded into one
+    # unexplained number.
+    penalty_amount: float | None
     citation: CitationOut
 
     @classmethod
@@ -75,6 +88,8 @@ class FeeOut(BaseModel):
         return cls(
             basis=f.basis,
             base_amount=float(f.base_amount),
+            currency=f.currency,
+            penalty_amount=float(f.penalty_amount) if f.penalty_amount is not None else None,
             citation=CitationOut.from_citation(f.citation),
         )
 
@@ -285,4 +300,43 @@ class StudioResolutionOut(BaseModel):
             district=r.district,
             studios=[StudioOut.from_resolved(s) for s in r.studios],
             receipt_note=r.receipt_note,
+        )
+
+
+# --- Item 7: user accounts and saved plans -----------------------------
+
+
+class SignupRequest(BaseModel):
+    email: str
+    password: str
+
+
+class SigninRequest(BaseModel):
+    email: str
+    password: str
+
+
+class TokenOut(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+
+
+class SavePlanRequest(BaseModel):
+    case_id: uuid.UUID
+    label: str
+
+
+class SavedPlanOut(BaseModel):
+    id: uuid.UUID
+    case_id: uuid.UUID
+    label: str
+    created_at: datetime
+
+    @classmethod
+    def from_model(cls, saved_plan) -> "SavedPlanOut":
+        return cls(
+            id=saved_plan.id,
+            case_id=saved_plan.case_id,
+            label=saved_plan.label,
+            created_at=saved_plan.created_at,
         )

@@ -143,6 +143,7 @@ def seed(db: Session) -> None:
 
     doc_id7 = _source_document(db, "pages_e.php?id=7")
     doc_id8 = _source_document(db, "pages_e.php?id=8")
+    doc_id9 = _source_document(db, "pages_e.php?id=9")
     doc_id12 = _source_document(db, "pages_e.php?id=12")
     doc_id24 = _source_document(db, "pages_e.php?id=24")
     doc_complaint_form = _source_document(
@@ -224,6 +225,15 @@ def seed(db: Session) -> None:
             negated=False,
         )
     )
+    # service_basis — BUG FIX (seven-corrections round, item 3): same
+    # gate as app.seed.phase4_renewal, same reasoning.
+    db.add(
+        QuestionCondition(
+            question_id=questions["service_basis"].id,
+            condition_id=cond_applying_from_sri_lanka.id,
+            negated=False,
+        )
+    )
     db.add(
         QuestionCondition(
             question_id=questions["profession"].id,
@@ -295,6 +305,9 @@ def seed(db: Session) -> None:
     )
     db.add(studio_ack)
     db.flush()
+    # BUG FIX (conversational-quality round, item 3) — same as
+    # app.seed.phase4_renewal.
+    _link(db, studio_ack, cond_applying_from_sri_lanka, negated=False)
 
     # -- Domestic and overseas application-form Requirements — same
     # pattern as renewal/new-applicant's own split.
@@ -365,7 +378,9 @@ def seed(db: Session) -> None:
     db.flush()
     _link(db, overseas_application_form, cond_applying_from_abroad, negated=False)
 
-    fingerprints = Requirement(
+    # BUG FIX (seven-corrections round, item 1) — same split as
+    # app.seed.phase4_renewal.
+    fingerprints_domestic = Requirement(
         rule_version_id=rv.id,
         source_document_id=doc_id7.id,
         label=(
@@ -375,10 +390,29 @@ def seed(db: Session) -> None:
         kind="prerequisite",
         sequence=4,
     )
-    db.add(fingerprints)
+    db.add(fingerprints_domestic)
     db.flush()
-    _link(db, fingerprints, cond_age_lt_61, negated=False)
-    _link(db, fingerprints, cond_age_lt_16, negated=True)
+    _link(db, fingerprints_domestic, cond_age_lt_61, negated=False)
+    _link(db, fingerprints_domestic, cond_age_lt_16, negated=True)
+    _link(db, fingerprints_domestic, cond_applying_from_sri_lanka, negated=False)
+
+    fingerprints_overseas = Requirement(
+        rule_version_id=rv.id,
+        source_document_id=doc_id9.id,
+        label=(
+            "On your first arrival in Sri Lanka after your passport is "
+            "issued, complete a Biometric Data Acquisition (BDA) form at "
+            "the airport, then report to the Head Office or a Regional "
+            "Office to give your fingerprints"
+        ),
+        kind="step",
+        sequence=4,
+    )
+    db.add(fingerprints_overseas)
+    db.flush()
+    _link(db, fingerprints_overseas, cond_age_lt_61, negated=False)
+    _link(db, fingerprints_overseas, cond_age_lt_16, negated=True)
+    _link(db, fingerprints_overseas, cond_applying_from_abroad, negated=False)
 
     # -- Documents specific to this service (source: pages_e.php?id=8
     # seq 32-34 / instructions_english_td.pdf (e)) ------------------
@@ -486,23 +520,35 @@ def seed(db: Session) -> None:
     # FeeRule row, not a sum of several (see that module's own
     # docstring). 10,000+20,000=30,000 / 10,000+15,000=25,000 for normal
     # basis; 20,000+20,000=40,000 / 20,000+15,000=35,000 for urgent.
+    # BUG FIX (conversational-quality round, item 6's own demo-scenario
+    # finding): used to store one pre-combined `base_amount` (30000,
+    # 25000, ...) with no breakdown — a citizen saw "LKR 30,000" with no
+    # explanation. Split into the genuine base fee (10,000 normal/
+    # 20,000 urgent, same as every other service) plus the penalty tier
+    # on top of it (LKR 20,000 within a year of issue, 15,000 after —
+    # pages_e.php?id=8's own figures, unchanged) — see ResolvedFee's own
+    # comment for how a citizen-facing total is computed from these two.
     db.add_all(
         [
             FeeRule(
                 rule_version_id=rv.id, source_document_id=doc_id8.id,
-                condition_id=cond_lost_within_1yr.id, base_amount=30000.00, basis="normal",
+                condition_id=cond_lost_within_1yr.id, base_amount=10000.00,
+                penalty_amount=20000.00, basis="normal",
             ),
             FeeRule(
                 rule_version_id=rv.id, source_document_id=doc_id8.id,
-                condition_id=cond_lost_over_1yr.id, base_amount=25000.00, basis="normal",
+                condition_id=cond_lost_over_1yr.id, base_amount=10000.00,
+                penalty_amount=15000.00, basis="normal",
             ),
             FeeRule(
                 rule_version_id=rv.id, source_document_id=doc_id8.id,
-                condition_id=cond_lost_within_1yr.id, base_amount=40000.00, basis="urgent",
+                condition_id=cond_lost_within_1yr.id, base_amount=20000.00,
+                penalty_amount=20000.00, basis="urgent",
             ),
             FeeRule(
                 rule_version_id=rv.id, source_document_id=doc_id8.id,
-                condition_id=cond_lost_over_1yr.id, base_amount=35000.00, basis="urgent",
+                condition_id=cond_lost_over_1yr.id, base_amount=20000.00,
+                penalty_amount=15000.00, basis="urgent",
             ),
         ]
     )

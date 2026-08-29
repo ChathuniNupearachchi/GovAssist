@@ -45,6 +45,15 @@ FINGERPRINTS_LABEL = (
     "Provide fingerprints in person at the Head Office or a Regional "
     "Office (required for applicants aged 16 to 60)"
 )
+# Seven-corrections round, item 1 — the overseas counterpart, a
+# post-issuance step rather than an intake prerequisite. Swapped in for
+# FINGERPRINTS_LABEL for an abroad applicant, not added alongside it.
+FINGERPRINTS_OVERSEAS_LABEL = (
+    "On your first arrival in Sri Lanka after your passport is issued, "
+    "complete a Biometric Data Acquisition (BDA) form at the airport, "
+    "then report to the Head Office or a Regional Office to give your "
+    "fingerprints"
+)
 APPLICATION_FORM_LABEL = "Completed application form K-35A"
 # The overseas counterpart — gated on applying_from == "abroad", swapped
 # in for APPLICATION_FORM_LABEL rather than added alongside it (see
@@ -174,9 +183,22 @@ GOLDEN_SCENARIOS = [
         # STANDARD_CORE's own APPLICATION_FORM_LABEL is domestic-only as
         # of the Downloads-page re-verification — swapped for the
         # Overseas Missions form here, not added alongside it.
-        "expected_labels": (STANDARD_CORE - {APPLICATION_FORM_LABEL})
-        | {CURRENT_PASSPORT_LABEL, OVERSEAS_APPLICATION_FORM_LABEL},
-        "expected_fee": 10000.00,
+        # Seven-corrections round, item 1: FINGERPRINTS_LABEL (an intake
+        # prerequisite) is likewise swapped for FINGERPRINTS_OVERSEAS_
+        # LABEL (a post-issuance step) — an overseas applicant never
+        # gives fingerprints before or during the mission application.
+        # Conversational-quality round, item 3: "Photo studio
+        # acknowledgement" is dropped entirely, not swapped for
+        # anything — authorised studios are a Sri Lankan domestic
+        # network, and pages_e.php?id=9 (already checked) states no
+        # overseas photograph requirement to encode in its place.
+        "expected_labels": (STANDARD_CORE - {APPLICATION_FORM_LABEL, FINGERPRINTS_LABEL, "Photo studio acknowledgement"})
+        | {CURRENT_PASSPORT_LABEL, OVERSEAS_APPLICATION_FORM_LABEL, FINGERPRINTS_OVERSEAS_LABEL},
+        # Seven-corrections round, item 5: the domestic LKR 10,000 was
+        # being quoted to overseas applicants too — corrected to the
+        # circular OM/01/2019's own "All Countries passport" rate.
+        "expected_fee": 158.00,
+        "expected_currency": "USD",
         # Mission path (id=9 seq 2), not "every office since district is
         # unknown" — see the module docstring's note on this scenario.
         "expected_offices": {"Overseas Sri Lankan Missions"},
@@ -400,6 +422,32 @@ GOLDEN_SCENARIOS = [
         "expect_amendment_alternative": False,
         "expect_scope_gate": False,
     },
+    # -- 25/26: conversational-quality round, item 3 and item 4's own
+    # explicitly-named regressions (both already implicit in scenarios
+    # 1 and 9 above, but named directly per that round's own "verify
+    # with a golden scenario each" request).
+    {
+        "name": "25. Overseas — no photo studio acknowledgement (item 3 regression)",
+        "answers": {**BASE, "age": "30", "district": None, "applying_from": "abroad"},
+        "expected_labels": (STANDARD_CORE - {APPLICATION_FORM_LABEL, FINGERPRINTS_LABEL, "Photo studio acknowledgement"})
+        | {CURRENT_PASSPORT_LABEL, OVERSEAS_APPLICATION_FORM_LABEL, FINGERPRINTS_OVERSEAS_LABEL},
+        "expected_fee": 158.00,
+        "expected_currency": "USD",
+        "expected_offices": {"Overseas Sri Lankan Missions"},
+        "expect_conflict_note": False,
+        "expect_amendment_alternative": False,
+        "expect_scope_gate": False,
+    },
+    {
+        "name": "26. No profession stated — no educational/service certificate (item 4 regression)",
+        "answers": {**BASE, "age": "30", "district": "Colombo", "photo_district": "Colombo", "profession": ""},
+        "expected_labels": STANDARD_CORE | {CURRENT_PASSPORT_LABEL},
+        "expected_fee": 10000.00,
+        "expected_offices": {"Head Office"},
+        "expect_conflict_note": False,
+        "expect_amendment_alternative": False,
+        "expect_scope_gate": False,
+    },
 ]
 
-assert len(GOLDEN_SCENARIOS) == 24, "10 original (BACKEND_PLAN.md Phase 4.7) + 10 added for langgraph-orchestration-branch + 3 for the manual-QA bug-fix round + 1 for Phase 9's applying_from domestic-branch regression"
+assert len(GOLDEN_SCENARIOS) == 26, "10 original (BACKEND_PLAN.md Phase 4.7) + 10 added for langgraph-orchestration-branch + 3 for the manual-QA bug-fix round + 1 for Phase 9's applying_from domestic-branch regression + 2 for the conversational-quality round's items 3/4"

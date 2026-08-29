@@ -1,0 +1,303 @@
+/* admin-dashboard change: plain CSS, no design system — an internal
+   tool for a handful of staff, per CLAUDE.md's "keep it plain"
+   instruction. Palette matches the mobile app's own tokens
+   (govassist/src/theme/tokens.ts) exactly — dark institutional blue +
+   white — so the dashboard and the citizen-facing app read as one
+   product, not two. */
+
+:root {
+  color-scheme: light;
+
+  --primary: #1b4d89;
+  --primary-dark: #123661;
+  --primary-light: #e8f0fa;
+
+  --surface: #ffffff;
+  --bg: #f7f8fa;
+  --border: #e2e5ea;
+
+  --text: #1a1d21;
+  --muted: #5a6270;
+  --text-faint: #8a919e;
+
+  --success: #1e7a46;
+  --success-light: #e6f4ec;
+  --warning: #a85a00;
+  --warning-light: #fdf0e1;
+  --danger: #b3261e;
+  --danger-light: #fceaea;
+
+  --accent: var(--primary);
+  --panel: var(--surface);
+  --cosmetic: var(--primary-light);
+  --material: var(--danger-light);
+  --material-border: var(--danger);
+
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.layout {
+  display: flex;
+  min-height: 100vh;
+}
+
+.nav {
+  width: 210px;
+  flex-shrink: 0;
+  background: var(--primary-dark);
+  color: #ffffff;
+  padding: 1.25rem 1rem;
+}
+
+.nav h1 {
+  font-size: 1.05rem;
+  margin: 0 0 1.25rem 0;
+  color: #ffffff;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.nav a {
+  display: block;
+  padding: 0.55rem 0.6rem;
+  color: rgba(255, 255, 255, 0.85);
+  text-decoration: none;
+  border-radius: 6px;
+  font-size: 0.92rem;
+  margin-bottom: 0.15rem;
+}
+
+.nav a.active,
+.nav a:hover {
+  background: rgba(255, 255, 255, 0.14);
+  color: #ffffff;
+}
+
+.nav button {
+  margin-top: 1.25rem;
+  width: 100%;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  color: #ffffff;
+}
+
+.nav button:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.content {
+  flex: 1;
+  padding: 1.5rem 2rem;
+  max-width: 960px;
+}
+
+h2 {
+  margin-top: 0;
+  color: var(--primary-dark);
+}
+
+h3 {
+  color: var(--primary-dark);
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0.75rem 0;
+}
+
+th,
+td {
+  text-align: left;
+  padding: 0.5rem 0.6rem;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.9rem;
+}
+
+th {
+  color: var(--muted);
+  font-weight: 600;
+}
+
+tr.clickable {
+  cursor: pointer;
+}
+
+tr.clickable:hover {
+  background: var(--primary-light);
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1rem 1.25rem;
+  margin-bottom: 1rem;
+}
+
+.grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.pill {
+  display: inline-block;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.pill.approved {
+  background: var(--success-light);
+  color: var(--success);
+}
+
+.pill.pending {
+  background: var(--warning-light);
+  color: var(--warning);
+}
+
+.pill.rejected {
+  background: var(--danger-light);
+  color: var(--danger);
+}
+
+.pill.outdated {
+  background: var(--danger-light);
+  color: var(--danger);
+}
+
+.diff-row.material {
+  background: var(--material);
+  border-left: 3px solid var(--material-border);
+}
+
+.diff-row.cosmetic {
+  background: var(--cosmetic);
+}
+
+.citation {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.citation a {
+  color: var(--primary);
+}
+
+.form-row {
+  margin-bottom: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.form-row label {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+input,
+select,
+textarea {
+  padding: 0.4rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 0.95rem;
+  font-family: inherit;
+  background: var(--surface);
+  color: var(--text);
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-light);
+}
+
+button {
+  padding: 0.45rem 0.9rem;
+  border: 1px solid var(--primary);
+  background: var(--primary);
+  color: #ffffff;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+button:hover:not(:disabled) {
+  background: var(--primary-dark);
+  border-color: var(--primary-dark);
+}
+
+button.secondary {
+  background: transparent;
+  color: var(--primary);
+  border-color: var(--border);
+}
+
+button.secondary:hover:not(:disabled) {
+  background: var(--primary-light);
+  border-color: var(--primary);
+}
+
+button.danger {
+  background: var(--danger);
+  border-color: var(--danger);
+}
+
+button.danger:hover:not(:disabled) {
+  background: #8f1e18;
+  border-color: #8f1e18;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+a {
+  color: var(--primary);
+}
+
+.error {
+  color: var(--danger);
+  font-size: 0.9rem;
+}
+
+.note {
+  font-size: 0.85rem;
+  color: var(--muted);
+  font-style: italic;
+}
+
+.auth-page {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background: var(--primary-dark);
+}
+
+.auth-card {
+  width: 320px;
+}
+
+.auth-card h2 {
+  color: var(--primary-dark);
+}

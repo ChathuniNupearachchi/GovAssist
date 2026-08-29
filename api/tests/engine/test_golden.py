@@ -25,6 +25,10 @@ def test_golden_scenario(db, scenario):
     assert actual_labels == scenario["expected_labels"], scenario["name"]
 
     assert result.fee.base_amount == scenario["expected_fee"], scenario["name"]
+    # Seven-corrections round, item 5: every scenario predating this fix
+    # implicitly expects LKR (the only currency this app ever quoted
+    # before) — defaulted so those scenarios don't all need updating.
+    assert result.fee.currency == scenario.get("expected_currency", "LKR"), scenario["name"]
 
     actual_offices = {o.name for o in result.offices.offices}
     assert actual_offices == scenario["expected_offices"], scenario["name"]

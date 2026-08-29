@@ -1,0 +1,18 @@
+fastapi==0.141.1
+uvicorn==0.52.3
+sqlalchemy==2.0.52
+psycopg2-binary==2.9.12
+python-dotenv==1.2.2
+pydantic==2.13.4
+bcrypt==5.0.0
+PyJWT==2.13.0
+pytest==9.1.1
+httpx==0.28.1
+# Required transitively: app.models (re-exported from the citizen
+# system's api/app/models.py, see app/models.py's docstring) declares
+# a pgvector column type on DOCUMENT_CHUNK, even though /admin/api
+# never queries that column directly.
+pgvector==0.5.0
+# scripts/verify_isolation.py (task 10.2) only — drives both APIs over
+# plain HTTP rather than importing either app's own `app` package.
+requests==2.34.2

@@ -47,6 +47,32 @@ def test_blank_profession_records_as_no_profession():
     assert try_deterministic_match("profession", "   ") == ""
 
 
+def test_no_profession_phrasings_all_record_as_empty():
+    """BUG FIX (conversational-quality round, item 4): "student" —a
+    common, legitimate answer for a minor or a young adult — was being
+    recorded as a literal profession, incorrectly triggering the
+    educational/service-certificate requirement (meant for a stated
+    occupation, not "I'm in school"). Every phrasing below must record
+    as "" (no profession), the same as a blank answer — never the
+    literal words."""
+    for answer in [
+        "student", "Student", "a student", "I'm a student", "still a student",
+        "none", "no job", "no profession", "unemployed", "I am unemployed",
+        "not employed", "not working", "still in school", "still studying",
+        "I don't have a job", "I do not have a job", "no job yet",
+    ]:
+        assert try_deterministic_match("profession", answer) == "", answer
+
+
+def test_a_real_profession_still_records_as_stated():
+    """The widened not-applicable matching must not swallow a real
+    occupation that happens to share a word with a not-applicable
+    phrase (design.md's own pre-existing example: "I have no job title
+    I want to list" is a real profession-adjacent statement)."""
+    assert try_deterministic_match("profession", "Software Engineer") == "Software Engineer"
+    assert try_deterministic_match("profession", "I work as a teacher") == "I work as a teacher"
+
+
 def test_message_with_surrounding_prose_still_matches():
     """CRITICAL BUG FIX (production incident): a message with a plausible
     answer embedded in a normal sentence must match deterministically,

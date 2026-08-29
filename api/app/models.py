@@ -273,6 +273,14 @@ class FeeRule(Base):
     base_amount: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False)
     penalty_amount: Mapped[float | None] = mapped_column(Numeric(10, 2), nullable=True)
     basis: Mapped[str] = mapped_column(String, nullable=False, default="normal")
+    # Seven-corrections round, item 5: overseas fees are genuinely
+    # denominated in USD in the source circular (OM/01/2019), not an LKR
+    # equivalent — the circular itself tells missions to convert to
+    # local currency themselves, meaning USD is the authoritative
+    # figure, not a display nicety. Every existing row is LKR (the only
+    # currency this app has ever quoted before this fix); defaulted so
+    # no migration/backfill is needed for them.
+    currency: Mapped[str] = mapped_column(String, nullable=False, default="LKR", server_default="LKR")
 
     rule_version: Mapped["RuleVersion"] = relationship()
     condition: Mapped["Condition | None"] = relationship()
@@ -401,6 +409,102 @@ class AdminUser(Base):
     id: Mapped[uuid.UUID] = _uuid_pk()
     email: Mapped[str] = mapped_column(String, nullable=False, unique=True)
     role: Mapped[str] = mapped_column(String, nullable=False)
+    # admin-dashboard change: this table existed from Phase 2 but was
+    # never actually used by the citizen system — password_hash was
+    # added, not backfilled, so it's nullable for any pre-existing row.
+    # Written only by /admin/api's signup route, and only as a bcrypt
+    # hash — see admin-auth spec's "Admin signup" requirement.
+    password_hash: Mapped[str | None] = mapped_column(String, nullable=True)
+
+
+class AdminAction(Base):
+    """admin-dashboard change: the audit log of every approve/reject
+    decision a reviewer records. Never mutates RULE_VERSION.status or
+    any other live table — see admin-data-access spec's "Approving or
+    rejecting in the dashboard never mutates live rule state"."""
+
+    __tablename__ = "admin_action"
+    __table_args__ = (
+        CheckConstraint("action IN ('approve', 'reject')", name="ck_admin_action_action"),
+    )
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    admin_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("admin_user.id"), nullable=False
+    )
+    action: Mapped[str] = mapped_column(String, nullable=False)
+    # Polymorphic reference — an ADMIN_DRAFT or a live RULE_VERSION id,
+    # per admin-rule-review spec's "pending queue combines dashboard and
+    # live drafts".
+    target_type: Mapped[str] = mapped_column(String, nullable=False)
+    target_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, default=datetime.utcnow
+    )
+
+    admin: Mapped["AdminUser"] = relationship()
+
+
+class AdminDraft(Base):
+    """admin-dashboard change: a dashboard-local draft rule change,
+    seeded for demonstration (design.md's "The four admin-owned
+    tables") rather than produced by the not-yet-built LLM rule-parsing
+    pipeline. `payload` matches resolve_requirements/resolve_fee's own
+    return shape, so a future real draft-producer has a concrete target
+    to match."""
+
+    __tablename__ = "admin_draft"
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('pending', 'approved', 'rejected')", name="ck_admin_draft_status"
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    service_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("service.id"), nullable=False
+    )
+    based_on_rule_version_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("rule_version.id"), nullable=True
+    )
+    payload: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    status: Mapped[str] = mapped_column(String, nullable=False, default="pending")
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, default=datetime.utcnow
+    )
+
+    service: Mapped["Service"] = relationship()
+    based_on_rule_version: Mapped["RuleVersion | None"] = relationship()
+
+
+class AdminOverlay(Base):
+    """admin-dashboard change: a dashboard-local create/update/delete on
+    a service or source document, reflected only in the dashboard's own
+    view — live SERVICE/SOURCE_DOCUMENT/RULE_VERSION rows are never
+    written to. See admin-service-catalog and admin-source-catalog
+    specs' "overlay-only" requirements."""
+
+    __tablename__ = "admin_overlay"
+    __table_args__ = (
+        CheckConstraint(
+            "target_type IN ('service', 'source_document')", name="ck_admin_overlay_target_type"
+        ),
+        CheckConstraint(
+            "operation IN ('create', 'update', 'delete')", name="ck_admin_overlay_operation"
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    target_type: Mapped[str] = mapped_column(String, nullable=False)
+    # Null for a `create` operation — the overlay row itself represents
+    # the new record, which has no live id to point at.
+    target_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
+    operation: Mapped[str] = mapped_column(String, nullable=False)
+    payload: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, default=datetime.utcnow
+    )
 
 
 class ChatMessage(Base):
@@ -469,3 +573,49 @@ class ResolutionNote(Base):
     secondary_source_document: Mapped["SourceDocument | None"] = relationship(
         foreign_keys=[secondary_source_document_id]
     )
+
+
+class User(Base):
+    """Item 7 (user accounts and saved plans) — a citizen account, kept
+    deliberately minimal: no OAuth, no email verification, no password
+    reset. Distinct from `AdminUser` (internal reviewer/approver
+    accounts, no password at all, unrelated auth path) — this is the
+    citizen-facing signup/signin `app.auth` module authenticates
+    against. Table named `app_user`, not `user` — a reserved word in
+    Postgres that would otherwise need quoting at every reference."""
+
+    __tablename__ = "app_user"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    email: Mapped[str] = mapped_column(String, nullable=False, unique=True)
+    password_hash: Mapped[str] = mapped_column(String, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, default=datetime.utcnow
+    )
+
+
+class SavedPlan(Base):
+    """Item 7 — a user's bookmark onto one of their own resolved cases,
+    with a label they choose ("My renewal", "My daughter's passport").
+    Deliberately NOT a snapshot of the resolved plan's contents — a
+    case's answers never change after it's resolved, so `POST /case/
+    {id}/resolve` is re-run live when a saved plan is reopened, the same
+    single source of truth every other resolve caller already uses,
+    rather than a second, driftable copy of the same data."""
+
+    __tablename__ = "saved_plan"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("app_user.id"), nullable=False
+    )
+    case_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("case.id"), nullable=False
+    )
+    label: Mapped[str] = mapped_column(String, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, default=datetime.utcnow
+    )
+
+    user: Mapped["User"] = relationship()
+    case: Mapped["Case"] = relationship()

@@ -48,3 +48,38 @@ def test_no_further_question_once_all_relevant_answered(renewal_service_id, db):
 def test_age_is_the_first_question(renewal_service_id, db):
     q = next_question(db, renewal_service_id, {})
     assert "old" in q.prompt.lower()
+
+
+def test_overseas_applicant_never_asked_about_urgency(renewal_service_id, db):
+    """Seven-corrections round, item 3: an overseas applicant has no
+    same-day/urgent counter service to choose (that's a domestic
+    counter transaction — neither the fee circular nor pages_e.php?id=9
+    describes a mission equivalent, see design.md's "Timelines" note).
+    `service_basis` must never be the pending question once
+    applying_from == "abroad", all the way through to intake completing
+    with no further question at all."""
+    answered_except_service_basis = {
+        "age": "30",
+        "applying_from": "abroad",
+        "holds_passport": "true",
+        "name_changed": "false",
+        "dual_citizen": "false",
+        "section_19_2": "false",
+        "buddhist_priest": "false",
+        "profession": "",
+    }
+    q = next_question(db, renewal_service_id, answered_except_service_basis)
+    assert q is None, "service_basis (or any other question) must not be pending for an overseas applicant here"
+
+    # Confirm this is really because of the applying_from gate, not a
+    # coincidence — the identical domestic case still has a pending
+    # question (service_basis itself).
+    domestic_equivalent = {
+        **answered_except_service_basis,
+        "applying_from": "sri_lanka",
+        "district": "Colombo",
+        "photo_district": "Colombo",
+    }
+    q_domestic = next_question(db, renewal_service_id, domestic_equivalent)
+    assert q_domestic is not None
+    assert ATTRIBUTE_BY_PROMPT.get(q_domestic.prompt) == "service_basis"

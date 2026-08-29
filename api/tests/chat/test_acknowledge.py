@@ -10,7 +10,7 @@ from unittest.mock import patch
 
 import pytest
 
-from app.chat.acknowledge import Acknowledgement, build_acknowledgement
+from app.chat.acknowledge import Acknowledgement, _clean_acknowledgement_text, build_acknowledgement
 
 
 def test_no_recorded_facts_produces_no_acknowledgement(db):
@@ -69,3 +69,20 @@ def test_acknowledgement_never_states_a_fee_even_if_the_model_tries(db):
         )
 
     assert result is None
+
+
+def test_dangling_dash_is_stripped_and_a_full_stop_added():
+    """Conversational-quality round: the Groq cross-provider fallback
+    sometimes trails off with a dash and nothing after it ("Okay —"),
+    confirmed live — the acknowledgement is always immediately followed
+    by the next question, so a missing terminal punctuation reads as a
+    run-on once joined."""
+    assert _clean_acknowledgement_text("Okay —") == "Okay."
+    assert _clean_acknowledgement_text("Right - ") == "Right."
+
+
+def test_a_normal_acknowledgement_is_unchanged():
+    assert _clean_acknowledgement_text("Got it — you'll need your marriage certificate.") == (
+        "Got it — you'll need your marriage certificate."
+    )
+    assert _clean_acknowledgement_text("Right.") == "Right."
