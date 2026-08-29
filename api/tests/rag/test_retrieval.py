@@ -53,10 +53,39 @@ def test_approved_only_scoping_excludes_pending_documents(db):
 
 
 def test_strong_match_returns_relevant_result(db):
+    # RERANK_ENABLED defaults to False (measured decision — reranking
+    # changes zero accept/reject outcomes on this project's calibration
+    # set while costing ~2.2s/query; see retrieval.py's RERANK_ENABLED
+    # comment), so this is the hybrid-only path: the returned top
+    # chunk's raw `vector_distance` is exactly what `_hybrid_accept`
+    # gated on.
     result = retrieve(db, "What is an authorised photo studio?")
     assert result.relevant is True
     assert result.chunks
     assert result.chunks[0].vector_distance <= 0.55
+    assert result.chunks[0].rerank_score is None
+
+
+def test_strong_match_with_reranking_enabled(db, monkeypatch):
+    import app.rag.retrieval as retrieval_module
+
+    monkeypatch.setattr(retrieval_module, "RERANK_ENABLED", True)
+    result = retrieve(db, "What is an authorised photo studio?")
+    assert result.relevant is True
+    assert result.chunks
+    # Since Step 2 (reranker): the returned top chunk is `retrieve()`'s
+    # reranked top-1, which reranking can legitimately promote over
+    # hybrid search's own top pick — its raw `vector_distance` is no
+    # longer what the accept/reject decision gates on (that's the hybrid
+    # pool's own top-1, evaluated separately inside `_search_reranked`;
+    # see `retrieval.py`'s `_hybrid_accept`/`_is_strong_match`), so
+    # asserting a distance threshold directly on the returned chunk no
+    # longer reflects why this query is accepted. `rerank_score` is what
+    # the reranked path now surfaces on the returned chunk instead.
+    assert result.chunks[0].rerank_score is not None
+    # ms-marco-MiniLM-L-6-v2's raw logit scale (see rerank.py) — the
+    # calibrated floor (_RERANK_THRESHOLD), not a [0, 1] sigmoid bound.
+    assert result.chunks[0].rerank_score >= -5.0
 
 
 def test_exact_identifier_query_returns_relevant_result(db):

@@ -1,0 +1,133 @@
+def llm_factory(
+    model: str,
+    provider: str = "openai",
+    client: t.Optional[t.Any] = None,
+    adapter: str = "auto",
+    cache: t.Optional[CacheInterface] = None,
+    **kwargs: t.Any,
+) -> InstructorBaseRagasLLM:
+    """
+    Create an LLM instance for structured output generation with automatic adapter selection.
+
+    Supports multiple LLM providers and structured output backends with unified interface
+    for both sync and async operations. Returns instances with .generate() and .agenerate()
+    methods that accept Pydantic models for structured outputs.
+
+    Auto-detects the best adapter for your provider:
+    - Google Gemini → uses LiteLLM adapter
+    - Other providers → uses Instructor adapter (default)
+    - Explicit control available via adapter parameter
+
+    Args:
+        model: Model name (e.g., "gpt-4o", "claude-3-sonnet", "gemini-2.0-flash").
+        provider: LLM provider (default: "openai").
+                 Examples: openai, anthropic, google, groq, mistral, etc.
+        client: Pre-initialized client instance (required). For OpenAI, can be
+               OpenAI(...) or AsyncOpenAI(...).
+        adapter: Structured output adapter to use (default: "auto").
+                - "auto": Auto-detect based on provider/client (recommended)
+                - "instructor": Use Instructor library
+                - "litellm": Use LiteLLM (supports 100+ providers)
+        cache: Optional cache backend for caching LLM responses.
+               Pass DiskCacheBackend() for persistent caching across runs.
+               Saves costs and speeds up repeated evaluations by 60x.
+        **kwargs: Additional model arguments (temperature, max_tokens, top_p, etc).
+
+    Returns:
+        InstructorBaseRagasLLM: Instance with generate() and agenerate() methods.
+
+    Raises:
+        ValueError: If client is missing, provider is unsupported, model is invalid,
+                   or adapter initialization fails.
+
+    Examples:
+        from openai import OpenAI
+
+        # Basic usage
+        client = OpenAI(api_key="...")
+        llm = llm_factory("gpt-4o-mini", client=client)
+        response = llm.generate(prompt, ResponseModel)
+
+        # With caching (recommended for experiments)
+        from ragas.cache import DiskCacheBackend
+        cache = DiskCacheBackend()
+        llm = llm_factory("gpt-4o-mini", client=client, cache=cache)
+
+        # Anthropic
+        from anthropic import Anthropic
+        client = Anthropic(api_key="...")
+        llm = llm_factory("claude-3-sonnet", provider="anthropic", client=client)
+
+        # Google Gemini (auto-detects litellm adapter)
+        from litellm import OpenAI as LiteLLMClient
+        client = LiteLLMClient(api_key="...", model="gemini-2.0-flash")
+        llm = llm_factory("gemini-2.0-flash", client=client)
+
+        # Explicit adapter selection
+        llm = llm_factory("gemini-2.0-flash", client=client, adapter="litellm")
+
+        # Async
+        from openai import AsyncOpenAI
+        client = AsyncOpenAI(api_key="...")
+        llm = llm_factory("gpt-4o-mini", client=client)
+        response = await llm.agenerate(prompt, ResponseModel)
+    """
+    if client is None:
+        raise ValueError(
+            "llm_factory() requires a client instance. "
+            "Text-only mode has been removed.\n\n"
+            "To migrate:\n"
+            "  from openai import OpenAI\n"
+            "  client = OpenAI(api_key='...')\n"
+            "  llm = llm_factory('gpt-4o-mini', client=client)\n\n"
+            "For more details: https://docs.ragas.io/en/latest/llm-factory"
+        )
+
+    if not model:
+        raise ValueError("model parameter is required")
+
+    provider_lower = provider.lower()
+
+    # Auto-detect adapter if needed
+    if adapter == "auto":
+        from ragas.llms.adapters import auto_detect_adapter
+
+        adapter = auto_detect_adapter(client, provider_lower)
+
+    # Create LLM using selected adapter
+    from ragas.llms.adapters import get_adapter
+
+    try:
+        adapter_instance = get_adapter(adapter)
+        llm = adapter_instance.create_llm(
+            client, model, provider_lower, cache=cache, **kwargs
+        )
+    except ValueError as e:
+        # Re-raise ValueError from get_adapter for unknown adapter names
+        # Also handle adapter initialization failures
+        if "Unknown adapter" in str(e):
+            raise
+        # Adapter-specific failures get wrapped
+        raise ValueError(
+            f"Failed to initialize {provider} client with {adapter} adapter. "
+            f"Ensure you've created a valid {provider} client.\n"
+            f"Error: {str(e)}"
+        )
+    except Exception as e:
+        raise ValueError(
+            f"Failed to initialize {provider} client with {adapter} adapter. "
+            f"Ensure you've created a valid {provider} client.\n"
+            f"Error: {str(e)}"
+        )
+
+    track(
+        LLMUsageEvent(
+            provider=provider,
+            model=model,
+            llm_type="llm_factory",
+            num_requests=1,
+            is_async=False,
+        )
+    )
+
+    return llm

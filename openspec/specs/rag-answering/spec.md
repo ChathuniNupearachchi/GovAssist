@@ -51,7 +51,11 @@ chunks. An answer with no citations at all SHALL also be rejected, since
 a grounded answer always has at least one citation. If the regenerated
 answer still fails verification, the system SHALL return the same
 explicit "no relevant match" response used when retrieval itself found
-nothing relevant.
+nothing relevant. This verification requirement applies to every
+generated response drawing on retrieved chunks, including a response
+composed from multiple tool results (for example, a `retrieve_documents`
+tool result folded into a multi-step comparison) — not only a single-
+shot generation call.
 
 #### Scenario: An answer cites its source chunks
 - **WHEN** generation produces an answer from a set of retrieved chunks
@@ -78,6 +82,14 @@ nothing relevant.
 - **WHEN** the retried generation also fails citation verification
 - **THEN** the system returns the same explicit "no relevant match"
   response used when retrieval itself found nothing relevant
+
+#### Scenario: A tool-composed answer's document citations are verified too
+- **WHEN** a response is composed from one or more tool results and
+  includes a `retrieve_documents` result among them
+- **THEN** every document citation in that response is verified against
+  the chunks `retrieve_documents` actually returned, using the same
+  verify-reject-retry-fallback mechanism as a single-shot generated
+  answer
 
 ### Requirement: Retrieval ranks candidates by a blend of vector similarity and full-text relevance
 Retrieval SHALL rank candidate chunks using both semantic similarity

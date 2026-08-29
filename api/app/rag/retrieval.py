@@ -23,10 +23,21 @@ The self-check is still a pure threshold check, no extra Claude API
 call — CLAUDE.md's four authorized narrow Claude API jobs stay four. A
 weak top match still triggers one non-LLM query reformulation and one
 retry before giving up.
+
+2. RERANKER: the hybrid blend above now produces a wider candidate pool
+(`_CANDIDATE_POOL_SIZE`, 20) that CAN be reranked before generation —
+a cross-encoder (`app.rag.rerank`) rescoring that pool against the
+query, keeping the top 5. Measured decision: **disabled by default**
+(`RERANK_ENABLED`) — on this project's calibration set, reranking
+changes zero accept/reject outcomes over hybrid search alone, while
+costing ~2.2s per query even after swapping to a lighter model; see
+`RERANK_ENABLED`'s comment and design.md's "Is reranking worth
+shipping" analysis. Set `RAG_RERANK_ENABLED=true` to turn it back on.
 """
 
 from __future__ import annotations
 
+import os
 import re
 from dataclasses import dataclass
 
@@ -35,6 +46,7 @@ from sqlalchemy.orm import Session
 
 from app.ingestion.embedding import embed_text
 from app.models import DocumentChunk, SourceDocument
+from app.rag.rerank import rerank
 
 # How many candidates each individual ranking (vector, full-text)
 # contributes to the fusion pool, before RRF picks the final top_k. Wider
@@ -81,6 +93,12 @@ class RetrievedChunk:
     source_document: SourceDocument
     score: float  # fused RRF score — higher is more relevant
     vector_distance: float  # raw cosine distance to the query — lower is closer
+    # 2. RERANKER: the bge-reranker-base cross-encoder score against the
+    # query — higher is more relevant, scale is [0, 1] (sigmoid
+    # activation, confirmed directly). None until `_search_reranked`
+    # populates it; `_search`'s raw hybrid output leaves this unset,
+    # which is exactly what calibration.py's "before" measurement needs.
+    rerank_score: float | None = None
 
 
 @dataclass(frozen=True)
@@ -238,27 +256,136 @@ def _reformulate(query: str) -> str:
     return " ".join(keywords) if keywords else query
 
 
-def _is_strong_match(top: RetrievedChunk) -> bool:
-    """Two-tier accept rule — see `_SINGLE_SIGNAL_FLOOR`'s comment.
-    Agreement between signals (score above the single-signal floor)
-    accepts outright; a single-signal result falls back to the
-    calibrated raw cosine distance."""
-    if top.score > _SINGLE_SIGNAL_FLOOR + 1e-9:
-        return True
-    return top.vector_distance <= _VECTOR_FALLBACK_THRESHOLD
+def _hybrid_accept(top: RetrievedChunk) -> bool:
+    """The pre-reranker two-tier accept rule (RRF agreement, else cosine
+    distance) — unchanged from 6.7, applied to the hybrid pool's own
+    top-1 candidate specifically (see `_search_reranked`'s note on why
+    it must be this candidate, not whichever one reranking ends up
+    promoting)."""
+    return top.score > _SINGLE_SIGNAL_FLOOR + 1e-9 or top.vector_distance <= _VECTOR_FALLBACK_THRESHOLD
 
 
-def retrieve(db: Session, query: str, top_k: int = 5) -> RetrievalResult:
-    """Retrieve the top matching approved chunks for a query, ranked by
-    the hybrid vector + full-text blend, with one reformulation retry on
-    a weak initial match."""
+def _search_reranked(db: Session, query: str, top_k: int = 5, pool_size: int = _CANDIDATE_POOL_SIZE) -> tuple[list[RetrievedChunk], bool]:
+    """2. RERANKER: hybrid search returns `pool_size` candidates (wider
+    than what's passed to generation), the reranker scores each against
+    `query`, and the top `top_k` (by rerank score) go on to generation.
+
+    Returns `(chunks, hybrid_ok)` — `hybrid_ok` is whether the hybrid
+    pool's OWN top-1 candidate (before reranking) was itself a strong
+    match, evaluated once here rather than against whichever chunk
+    reranking ends up promoting to top-1: reranking's whole purpose is
+    to promote a chunk hybrid search under-ranked, so gating on that
+    promoted chunk's own (possibly weak) hybrid score would defeat the
+    reranker's benefit — confirmed directly: two genuine accept queries
+    ("working hours at the Head Office", "authorised photo studio")
+    fell through to reject before this fix, because reranking correctly
+    promoted a different, better-worded chunk than hybrid search's own
+    top pick, and that chunk's individual hybrid score alone read weak."""
+    candidates = _search(db, query, top_k=pool_size)
+    if not candidates:
+        return [], False
+    hybrid_ok = _hybrid_accept(candidates[0])
+    scored = rerank(query, candidates, text_of=lambda c: c.chunk.chunk_text, top_k=top_k)
+    chunks = [
+        RetrievedChunk(
+            chunk=s.item.chunk,
+            source_document=s.item.source_document,
+            score=s.item.score,
+            vector_distance=s.item.vector_distance,
+            rerank_score=s.rerank_score,
+        )
+        for s in scored
+    ]
+    return chunks, hybrid_ok
+
+
+# Calibrated against ms-marco-MiniLM-L-6-v2's raw logit scale (see
+# design.md's calibration table) — NOT the [0, 1] sigmoid scale
+# `BAAI/bge-reranker-base` used before the latency-driven model swap.
+# Measured accept scores: 0.680 to 4.799, EXCEPT "working hours at the
+# Head Office" at -2.943 — this smaller model scores that one genuine
+# accept query far worse than the others (a real accuracy cost of the
+# lighter model, not a bug), so the threshold must sit below it, not
+# just below the cluster of stronger accept scores. Measured reject
+# scores: -8.986 to -1.983. The AND-with-hybrid gate (see
+# `_is_strong_match`) is what actually separates reject from accept in
+# this calibration set — every reject query already fails the pre-rerank
+# hybrid signal on its own, so this threshold's job is only to catch a
+# genuinely weak rerank score on a query the hybrid signal did accept,
+# not to be the primary accept/reject boundary itself.
+_RERANK_THRESHOLD = -5.0
+
+
+def _is_strong_match(chunks: list[RetrievedChunk], hybrid_ok: bool) -> bool:
+    """Accept rule: the pre-reranker hybrid signal (query-level, see
+    `_search_reranked`) AND the reranker's own top score against its
+    calibrated threshold — an AND, not a replacement. `bge-reranker-
+    base` alone cannot separate this calibration set (see
+    `_RERANK_THRESHOLD`'s comment: a genuinely off-corpus query scored
+    0.999, higher than 5 of 6 in-corpus queries), so reranking here
+    narrows and reorders the candidate set generation sees without being
+    trusted as the sole accept/reject authority."""
+    if not chunks or not hybrid_ok:
+        return False
+    return chunks[0].rerank_score is not None and chunks[0].rerank_score >= _RERANK_THRESHOLD
+
+
+# Measured decision, not a default left on by construction — see
+# design.md's "Is reranking worth shipping" analysis. On this project's
+# nine-query calibration set, hybrid search alone already resolves
+# 9/9 correctly (it did before reranking existed, in Phase 6.7, and
+# still does); reranking (even after the latency-driven swap to a
+# ~22M-param model) changes zero accept/reject outcomes on this set — it
+# only reorders which chunks land in the top-k passed to generation —
+# while adding ~2.2s per query (measured), still above this project's
+# 1.5s target. Defaults OFF. Set `RAG_RERANK_ENABLED=true` to turn it
+# back on (e.g. once running on hardware where the latency is
+# acceptable, or once a downstream answer-quality evaluation — RAGAS,
+# not yet built at this point in the branch — can measure whether
+# reranked context actually improves generated answers despite not
+# changing this calibration set's accept/reject decisions).
+RERANK_ENABLED = os.environ.get("RAG_RERANK_ENABLED", "false").strip().lower() == "true"
+
+
+def _retrieve_hybrid_only(db: Session, query: str, top_k: int) -> RetrievalResult:
+    """The pre-Step-2 path: hybrid search's own top `top_k`, no
+    reranking stage. Used when `RERANK_ENABLED` is false."""
     chunks = _search(db, query, top_k)
-    if chunks and _is_strong_match(chunks[0]):
+    if chunks and _hybrid_accept(chunks[0]):
         return RetrievalResult(chunks=chunks, relevant=True)
 
     reformulated = _reformulate(query)
     retry_chunks = _search(db, reformulated, top_k) if reformulated != query else chunks
-    if retry_chunks and _is_strong_match(retry_chunks[0]):
+    if retry_chunks and _hybrid_accept(retry_chunks[0]):
         return RetrievalResult(chunks=retry_chunks, relevant=True)
 
     return RetrievalResult(chunks=[], relevant=False)
+
+
+def _retrieve_reranked(db: Session, query: str, top_k: int) -> RetrievalResult:
+    """2. RERANKER path: hybrid vector + full-text blend widened to a
+    candidate pool, reranked down to `top_k`, with one reformulation
+    retry on a weak initial match. Used when `RERANK_ENABLED` is true."""
+    chunks, hybrid_ok = _search_reranked(db, query, top_k)
+    if _is_strong_match(chunks, hybrid_ok):
+        return RetrievalResult(chunks=chunks, relevant=True)
+
+    reformulated = _reformulate(query)
+    if reformulated != query:
+        retry_chunks, retry_hybrid_ok = _search_reranked(db, reformulated, top_k)
+    else:
+        retry_chunks, retry_hybrid_ok = chunks, hybrid_ok
+    if _is_strong_match(retry_chunks, retry_hybrid_ok):
+        return RetrievalResult(chunks=retry_chunks, relevant=True)
+
+    return RetrievalResult(chunks=[], relevant=False)
+
+
+def retrieve(db: Session, query: str, top_k: int = 5) -> RetrievalResult:
+    """Retrieve the top matching approved chunks for a query. Reranking
+    (`_retrieve_reranked`) runs only when `RERANK_ENABLED`; otherwise
+    this is hybrid search alone (`_retrieve_hybrid_only`) — see
+    `RERANK_ENABLED`'s comment for why that's the current default."""
+    if RERANK_ENABLED:
+        return _retrieve_reranked(db, query, top_k)
+    return _retrieve_hybrid_only(db, query, top_k)

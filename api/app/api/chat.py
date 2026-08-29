@@ -28,6 +28,7 @@ from app.api.schemas import (
     TranscriptOut,
 )
 from app.chat.router import handle_message
+from app.chat.service_routing import route_opening_message
 from app.chat.session import (
     cache_session,
     get_transcript_dicts,
@@ -35,7 +36,6 @@ from app.chat.session import (
     resolve_case_for_device,
 )
 from app.db.session import get_db
-from app.engine.resolver import RENEWAL_SERVICE_CODE
 from app.models import Case, Service
 
 router = APIRouter(tags=["chat"])
@@ -66,12 +66,16 @@ def _get_or_create_case(db: Session, body: ChatMessageRequest) -> Case:
     if existing is not None:
         return existing
 
-    service = db.scalars(
-        select(Service).where(Service.code == RENEWAL_SERVICE_CODE)
-    ).first()
+    # A brand-new case is routed to passport-new only for an unambiguous
+    # first-time phrasing (`app.chat.service_routing`) — every other
+    # opening message keeps the existing passport-renewal default, so
+    # this is additive, not a behavior change for any message that
+    # already worked before passport-new existed.
+    service_code = route_opening_message(body.message)
+    service = db.scalars(select(Service).where(Service.code == service_code)).first()
     if service is None:
         raise HTTPException(
-            status_code=500, detail="passport-renewal service is not seeded"
+            status_code=500, detail=f"{service_code} service is not seeded"
         )
     case = Case(service_id=service.id, device_ref=body.device_ref)
     db.add(case)

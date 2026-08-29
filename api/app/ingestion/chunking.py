@@ -27,6 +27,22 @@ from app.models import SourceDocument
 MIN_CHUNK_WORDS = 200
 MAX_CHUNK_WORDS = 400
 
+# A prose run this short, standing alone between two table/list blocks
+# (or at a document's start/interior), is a trailing FAQ-style question
+# whose actual answer is the block that follows it, not real standalone
+# content — confirmed directly against pages_e.php?id=8's "Issue of
+# Passports" page, where at least 5 chunks were nothing but a bare
+# question ("Where can I obtain an application form ?", 7 words) split
+# off from the list that answers it. Below this threshold, the fragment
+# is held and merged as a prefix into the following block instead of
+# becoming its own near-content-free chunk (langgraph-orchestration-
+# branch design.md's "reranker false-accept" finding — discovered
+# because bge-reranker-base scores a bare question against any
+# similarly-phrased query, with no real content to disambiguate against,
+# in a way hybrid RRF search's full-text/cosine weighting didn't
+# surface).
+_MIN_STANDALONE_PROSE_WORDS = 12
+
 
 @dataclass(frozen=True)
 class Chunk:
@@ -114,14 +130,24 @@ def build_chunks(
     chunks: list[Chunk] = []
     prose_run: list[str] = []
     run_heading: str | None = None
+    # An undersized trailing prose fragment, held until the next block
+    # is known, so it can be merged as that block's prefix rather than
+    # emitted as its own near-content-free chunk — see
+    # `_MIN_STANDALONE_PROSE_WORDS`'s comment.
+    pending_prefix: str | None = None
 
     def flush_prose_run() -> None:
+        nonlocal pending_prefix
         if not prose_run:
             return
         merged = "\n\n".join(prose_run)
-        for passage in split_into_chunks(merged, min_words, max_words):
-            chunks.append(Chunk(text=passage, content_type="prose", section_heading=run_heading))
+        passages = split_into_chunks(merged, min_words, max_words)
         prose_run.clear()
+        if len(passages) == 1 and len(passages[0].split()) < _MIN_STANDALONE_PROSE_WORDS:
+            pending_prefix = passages[0]
+            return
+        for passage in passages:
+            chunks.append(Chunk(text=passage, content_type="prose", section_heading=run_heading))
 
     for block in blocks:
         if block.content_type == "prose":
@@ -131,9 +157,22 @@ def build_chunks(
             continue
 
         # A table or list block interrupts the current prose run and
-        # becomes its own chunk, never split regardless of word count.
+        # becomes its own chunk, never split regardless of word count —
+        # except an undersized trailing prose fragment immediately
+        # preceding it is prepended rather than dropped or left standing
+        # alone.
         flush_prose_run()
-        chunks.append(Chunk(text=block.text, content_type=block.content_type, section_heading=block.section_heading))
+        text = block.text
+        if pending_prefix is not None:
+            text = pending_prefix + "\n\n" + text
+            pending_prefix = None
+        chunks.append(Chunk(text=text, content_type=block.content_type, section_heading=block.section_heading))
 
     flush_prose_run()
+    if pending_prefix is not None:
+        # The document ended on an undersized trailing fragment with no
+        # following block to merge into — emit it standalone rather than
+        # silently dropping citizen-relevant text.
+        chunks.append(Chunk(text=pending_prefix, content_type="prose", section_heading=run_heading))
+
     return chunks

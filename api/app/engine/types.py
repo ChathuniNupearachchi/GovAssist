@@ -39,6 +39,21 @@ class ResolvedFee:
     basis: str  # normal | urgent
     base_amount: float
     citation: Citation
+    # Seven-corrections round, item 5 — see FeeRule.currency's own
+    # comment. "LKR" for every pre-existing fee rule; a genuinely
+    # different currency (USD, so far) for the ones this fix adds.
+    currency: str = "LKR"
+    # BUG FIX (conversational-quality round, item 6's own demo-scenario
+    # finding): a lost/stolen case's LKR 30,000 used to be seeded as one
+    # opaque pre-combined FeeRule.base_amount — a citizen saw "LKR
+    # 30,000" with no explanation of where it came from. `base_amount`
+    # is now the genuine base fee only (LKR 10,000/20,000, same as
+    # every other service); this is the penalty on top of it when one
+    # applies (LKR 20,000 within a year of issue, 15,000 after) — None
+    # for every fee that isn't a lost/stolen penalty tier. The citizen-
+    # facing total is `base_amount + (penalty_amount or 0)`, computed
+    # by whoever renders it, never pre-summed here.
+    penalty_amount: float | None = None
 
 
 @dataclass(frozen=True)
@@ -46,6 +61,25 @@ class ResolvedOffice:
     id: uuid.UUID
     name: str
     type: str  # head | regional | mission (never ds)
+
+
+@dataclass(frozen=True)
+class ResolvedStudio:
+    id: uuid.UUID
+    name: str
+    address: str
+    phone: str | None
+    citation: Citation
+
+
+@dataclass(frozen=True)
+class StudioResolution:
+    district: str
+    studios: list[ResolvedStudio]
+    # Always present — the studio acknowledgement/receipt-submission
+    # note applies regardless of which studio the citizen chose. See
+    # app.engine.studios.RECEIPT_NOTE.
+    receipt_note: str
 
 
 @dataclass(frozen=True)
@@ -59,6 +93,14 @@ class ConflictNote:
 class OfficeResolution:
     offices: list[ResolvedOffice]
     conflict_note: ConflictNote | None = None
+    # Set whenever a specific district narrowed the regional office list
+    # (never set when district is unknown and every regional office is
+    # listed) — the Phase 2 district-to-office mapping was recorded as a
+    # geographic placeholder, never verified against the Department's own
+    # jurisdiction data (no such data is published). Presented alongside
+    # the offices, not asserted away, per the office-resolver bug fix's
+    # explicit instruction not to claim an office is "nearest."
+    district_mapping_caveat: str | None = None
 
 
 @dataclass(frozen=True)

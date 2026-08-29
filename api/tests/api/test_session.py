@@ -9,9 +9,19 @@ convention.
 
 from __future__ import annotations
 
+import pytest
+
 from app.chat.session import _invalidate_session_cache
 from app.db.session import SessionLocal
 from app.models import Case, CaseAnswer, ChatMessage
+
+# Most messages here are deterministic tokens chosen specifically to
+# avoid the classifier — but at least one ("Teacher", a freeform
+# profession value) isn't obviously deterministic, and this file's own
+# docstring claims "real Claude classification calls" as its standard.
+# Marked conservatively rather than risk a real network call slipping
+# through the "no external API by default" default.
+pytestmark = pytest.mark.real_api
 
 
 def _delete_case(case_id: str) -> None:

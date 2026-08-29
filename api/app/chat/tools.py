@@ -33,6 +33,7 @@ from app.engine.requirements import resolve_requirements
 from app.engine.resolver import (
     AMENDMENT_SERVICE_CODE,
     RENEWAL_SERVICE_CODE,
+    UNDER_16_SERVICE_CODE,
     _amendment_alternative,
     _approved_rule_version,
     resolve_case as _resolve_case,
@@ -62,6 +63,8 @@ def _fee_dict(fee: ResolvedFee | None) -> dict[str, Any] | None:
     return {
         "basis": fee.basis,
         "base_amount": fee.base_amount,
+        "currency": fee.currency,
+        "penalty_amount": fee.penalty_amount,
         "citation": _citation_dict(fee.citation),
     }
 
@@ -133,9 +136,13 @@ def retrieve_documents(db: Session, query: str) -> dict[str, Any]:
     }
 
 
-def get_fee(db: Session, service: str, urgency: str) -> dict[str, Any]:
+def get_fee(db: Session, service: str, urgency: str, age: float | None = None) -> dict[str, Any]:
     """Wraps `app.engine.fees.resolve_fee`. `service` is "renewal" or
-    "amendment"; `urgency` is "normal" or "urgent"."""
+    "amendment"; `urgency` is "normal" or "urgent". `age`, when given,
+    selects an age-tiered fee where one exists (e.g. the renewal
+    service's below-16 rate) instead of the default adult rate —
+    without it, `resolve_fee` always returns the unconditional
+    (adult-rate) fee rule."""
     service_code = _SERVICE_CODES.get(service)
     if service_code is None:
         return {"error": f"Unknown service '{service}' — expected 'renewal' or 'amendment'."}
@@ -143,7 +150,7 @@ def get_fee(db: Session, service: str, urgency: str) -> dict[str, Any]:
         return {"error": f"Unknown urgency '{urgency}' — expected 'normal' or 'urgent'."}
 
     rule_version = _approved_rule_version(db, service_code)
-    fee = resolve_fee(db, rule_version.id, basis=urgency)
+    fee = resolve_fee(db, rule_version.id, basis=urgency, answers={"age": str(age)} if age is not None else None)
     if fee is None:
         return {
             "found": False,
@@ -187,7 +194,12 @@ def get_next_question(db: Session, case_id: str) -> dict[str, Any]:
     return {"pending": True, "attribute": ATTRIBUTE_BY_PROMPT.get(question.prompt), "prompt": question.prompt}
 
 
-def _is_under_16(answers: dict[str, str]) -> bool:
+def _is_under_16(answers: dict[str, str], service_code: str | None = None) -> bool:
+    """False for `passport-under-16` regardless of age — see
+    `app.graph.nodes._is_under_16`'s identical fix; this is the agent
+    tool's own independent copy of the same pre-check."""
+    if service_code == UNDER_16_SERVICE_CODE:
+        return False
     age = answers.get("age")
     return age is not None and float(age) < 16
 
@@ -204,13 +216,13 @@ def resolve_case(db: Session, case_id: str) -> dict[str, Any]:
         return {"error": f"No case found with id '{case_id}'."}
 
     answers = _answers_dict(db, case.id)
-    if not _is_under_16(answers):
+    if not _is_under_16(answers, service_code=case.service.code):
         pending = _next_question(db, case.service_id, answers)
         if pending is not None:
             return {"ready": False, "pending_question": pending.prompt}
 
     try:
-        resolution = _resolve_case(db, answers)
+        resolution = _resolve_case(db, answers, service_code=case.service.code)
     except IncompleteCaseError as exc:
         return {"ready": False, "pending_question": exc.pending_prompt}
 
@@ -242,7 +254,7 @@ def compare_amendment_vs_renewal(db: Session, case_id: str) -> dict[str, Any]:
 
     answers = _answers_dict(db, case.id)
     renewal_rv = _approved_rule_version(db, RENEWAL_SERVICE_CODE)
-    renewal_fee = resolve_fee(db, renewal_rv.id, basis=answers.get("service_basis", "normal"))
+    renewal_fee = resolve_fee(db, renewal_rv.id, basis=answers.get("service_basis", "normal"), answers=answers)
     renewal_requirements = resolve_requirements(db, renewal_rv.id, answers)
 
     amendment = _amendment_alternative(db)
@@ -278,12 +290,19 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
     },
     {
         "name": "get_fee",
-        "description": "The computed fee for a service and urgency, with its citation.",
+        "description": (
+            "The computed fee for a service and urgency, with its citation. "
+            "Pass age when the citizen's age is known or the question is "
+            "specifically about a minor's fee — some services have a "
+            "separate, lower fee tier for applicants under 16; omitting age "
+            "returns the standard adult-rate fee."
+        ),
         "input_schema": {
             "type": "object",
             "properties": {
                 "service": {"type": "string", "enum": ["renewal", "amendment"]},
                 "urgency": {"type": "string", "enum": ["normal", "urgent"]},
+                "age": {"type": ["number", "null"]},
             },
             "required": ["service", "urgency"],
         },
@@ -344,7 +363,7 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
 
 _HANDLERS = {
     "retrieve_documents": lambda db, args: retrieve_documents(db, args["query"]),
-    "get_fee": lambda db, args: get_fee(db, args["service"], args["urgency"]),
+    "get_fee": lambda db, args: get_fee(db, args["service"], args["urgency"], args.get("age")),
     "find_office": lambda db, args: find_office(db, args.get("district"), args["urgent"]),
     "get_next_question": lambda db, args: get_next_question(db, args["case_id"]),
     "resolve_case": lambda db, args: resolve_case(db, args["case_id"]),

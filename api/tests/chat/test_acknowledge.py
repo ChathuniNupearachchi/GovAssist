@@ -1,8 +1,16 @@
-"""6.11.3 visible extraction acknowledgement tests."""
+"""6.11.3 visible extraction acknowledgement tests.
 
-from unittest.mock import MagicMock, patch
+Mocked at `app.chat.acknowledge.structured_completion` — the
+`app.llm.gateway` seam (langgraph-orchestration-branch's LiteLLM
+gateway) — rather than at a provider SDK, since which provider serves
+this job is now a config value, not a fixed import.
+"""
 
-from app.chat.acknowledge import Acknowledgement, build_acknowledgement
+from unittest.mock import patch
+
+import pytest
+
+from app.chat.acknowledge import Acknowledgement, _clean_acknowledgement_text, build_acknowledgement
 
 
 def test_no_recorded_facts_produces_no_acknowledgement(db):
@@ -10,6 +18,7 @@ def test_no_recorded_facts_produces_no_acknowledgement(db):
     assert result is None
 
 
+@pytest.mark.real_api
 def test_name_change_acknowledges_the_marriage_certificate_requirement(db):
     """DONE WHEN: "I got married and my name is different now" -> the
     engine's own before/after diff includes the marriage certificate
@@ -31,11 +40,10 @@ def test_name_change_acknowledges_the_marriage_certificate_requirement(db):
 
 
 def test_acknowledgement_generation_failure_returns_none(db):
-    with patch("app.chat.acknowledge.anthropic.Anthropic") as mock_anthropic_cls:
-        mock_client = MagicMock()
-        mock_client.messages.parse.side_effect = RuntimeError("simulated API failure")
-        mock_anthropic_cls.return_value = mock_client
-
+    with patch(
+        "app.chat.acknowledge.structured_completion",
+        side_effect=RuntimeError("simulated API failure"),
+    ):
         result = build_acknowledgement(
             db,
             recorded_facts={"age": "34"},
@@ -52,13 +60,7 @@ def test_acknowledgement_never_states_a_fee_even_if_the_model_tries(db):
     regex backstop discards it rather than passing it through."""
     fee_leaking = Acknowledgement(text="Noted — that'll be LKR 10,000. How old are you?")
 
-    with patch("app.chat.acknowledge.anthropic.Anthropic") as mock_anthropic_cls:
-        mock_client = MagicMock()
-        mock_response = MagicMock()
-        mock_response.parsed_output = fee_leaking
-        mock_client.messages.parse.return_value = mock_response
-        mock_anthropic_cls.return_value = mock_client
-
+    with patch("app.chat.acknowledge.structured_completion", return_value=fee_leaking):
         result = build_acknowledgement(
             db,
             recorded_facts={"age": "34"},
@@ -67,3 +69,20 @@ def test_acknowledgement_never_states_a_fee_even_if_the_model_tries(db):
         )
 
     assert result is None
+
+
+def test_dangling_dash_is_stripped_and_a_full_stop_added():
+    """Conversational-quality round: the Groq cross-provider fallback
+    sometimes trails off with a dash and nothing after it ("Okay —"),
+    confirmed live — the acknowledgement is always immediately followed
+    by the next question, so a missing terminal punctuation reads as a
+    run-on once joined."""
+    assert _clean_acknowledgement_text("Okay —") == "Okay."
+    assert _clean_acknowledgement_text("Right - ") == "Right."
+
+
+def test_a_normal_acknowledgement_is_unchanged():
+    assert _clean_acknowledgement_text("Got it — you'll need your marriage certificate.") == (
+        "Got it — you'll need your marriage certificate."
+    )
+    assert _clean_acknowledgement_text("Right.") == "Right."

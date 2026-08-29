@@ -16,6 +16,7 @@ def _renewal_rule_version_id(db):
 
 BASE_ANSWERS = {
     "age": "30",
+    "applying_from": "sri_lanka",
     "holds_passport": "false",
     "name_changed": "false",
     "dual_citizen": "false",
@@ -23,6 +24,7 @@ BASE_ANSWERS = {
     "profession": "",
     "buddhist_priest": "false",
     "district": "Colombo",
+    "photo_district": "Colombo",
     "service_basis": "normal",
 }
 

@@ -5,8 +5,12 @@ real dev database, and real Claude API calls — same standard as
 
 from __future__ import annotations
 
+import pytest
+
 from app.db.session import SessionLocal
 from app.models import Case, CaseAnswer, ChatMessage
+
+pytestmark = pytest.mark.real_api
 
 
 def _delete_case(case_id: str) -> None:

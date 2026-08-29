@@ -1,0 +1,279 @@
+# GovAssist conversational QA scenarios — read by tests/qa/harness.py.
+#
+# Rewritten in natural language: every line is phrased the way a Sri
+# Lankan citizen would actually type it to a chat assistant — real
+# people write incomplete sentences, misspell, give context before the
+# question, and are often uncertain about what they need. Nobody types
+# "68 old" or "urgent service."
+#
+# Format unchanged: one scenario per non-comment, non-blank line inside
+# a "## CATEGORY: <letter> — <name>" block; consecutive non-blank lines
+# with no blank line between them are turns of ONE multi-turn scenario
+# on a fresh device_ref; a blank line starts a new scenario.
+#
+# Organized per service (design.md's rebuilt 7-service list), each
+# covering: straightforward phrasings, an uncertain citizen, a citizen
+# who over-explains before asking, misspelled/lowercase input, a
+# mid-intake interruption, and a correction — plus general information,
+# greetings, and the three kinds of out-of-scope refusal.
+
+## CATEGORY: A — Renew passport
+my passport expired last month what do i do
+
+need to renew my passport before it runs out
+
+hi my passport is expiring in 3 months, do i need to do anything yet
+
+passport renewal
+
+Straightforward and a full sentence: I've had my passport ten years, it's about to expire, what do I need to bring to renew it
+
+im not sure if i need to renew or get a totally new one, my old passport is somewhere in the house but i havent used it in like 8 years and i think it might be expired now, what should i do
+
+so basically i moved back to sri lanka last year after living abroad for a while and i just realized my passport expires in like 2 months and i havent thought about this at all, my job needs me to travel again soon and im panicking a bit, what do i need to do to renew it in time
+
+renwal of passport wats needed
+
+im 68 can i still apply for renewal, do i need to give fingerprints at my age
+
+my father is 68 years old, does he need to give fingerprints?
+
+i need to renew my passport, then partway through
+what is the difference between normal and urgent
+where do i get the application form for this
+
+i need to renew my passport
+actually wait how much does this cost before i answer more questions
+
+## CATEGORY: B — New passport (first-time applicant)
+i've never had a passport before, how do i get one
+
+applying for my first ever passport, where do i start
+
+my daughter just turned 18 and needs a passport for the first time, never had one
+
+first time passport wat do i need
+
+i need help getting a passport, ive never traveled outside sri lanka before so i dont even know where to begin, what documents do i need to bring and how much will it cost me
+
+my son is starting university abroad next year and he's never had a passport in his life, we need to get this sorted but we don't really know the process since we've never done it, can you walk us through it
+
+need passport never had one b4
+
+i am 17 and never had a passport, can i still apply myself or does my parent need to come
+
+i've never had a passport
+so wait is this the same process as renewing one
+
+first time applying for a passport
+can i come back to this later and finish it another day
+
+## CATEGORY: C — Lost or stolen passport
+i lost my passport what do i do now
+
+my passport was stolen, help
+
+someone stole my bag with my passport inside it
+
+i cant find my passport anywhere, what do i do
+
+lost passprot need new one urgent
+
+so this is really stressful, i was traveling and someone went through my bag while i was asleep on the bus and took my wallet and my passport was in there too, i dont even know what to do first, do i call the police or the immigration department
+
+im currently abroad and my passport got stolen out of my hotel room, i have a flight back home in 4 days and i have no idea what im supposed to do to get back into sri lanka without a passport
+
+stolen passprot abroad wat do i do
+
+i lost my passport, then partway through
+wait do i need to pay a fine for losing it
+
+my passport was stolen while abroad
+can i change my answer, it was actually lost not stolen
+
+## CATEGORY: D — Amend an existing passport
+should i amend or get a new one
+
+is it cheaper to just change the name
+
+what is the difference between amendment and renewal
+
+can i just update my name instead
+
+i got married and my surname changed, do i need a whole new passport or can i just update it
+
+i want to add my job to my passport, is that possible
+
+need to put my nic number on my passport how
+
+i changed careers recently and now i'm a doctor, can i get my profession updated on my passport, and separately my old passport still shows my maiden name from before i got married, can both of these be fixed at the same time or do i need to do them separately
+
+amendmnet how much n how long does it take
+
+can i cancel the india nepal restriction on my passport
+
+i want to amend my passport
+how long does an amendment actually take compared to a new passport
+
+i need to change my name on my passport
+actually i want to change my profession too not just my name
+
+## CATEGORY: E — Passport for a child under 16
+how do i get a passport for my daughter, she's 8
+
+my son is 14, does he need his own passport
+
+applying for a passport for my child, what's needed
+
+passport for my 8 year old
+
+my baby was born 3 months ago and we're planning to travel as a family next year, when can we apply for her passport and what do we need
+
+my wife and i are divorced and i have custody of our son, i need to apply for his passport but i'm not sure what extra paperwork i need because of the divorce situation, can you help
+
+kid passport wat papers needed
+
+can just one parent bring the child to apply or do both of us have to go
+
+my daughter was born while we were living in dubai, does that change anything for her passport application
+
+applying for my child's passport
+does she need a 10 year passport or is there a shorter option
+
+my son needs a passport, i have full custody
+wait actually his father passed away, does that change what documents i need
+
+## CATEGORY: F — Delete a child's name from a parent's passport
+my old passport has my daughter's name on it, how do i remove her
+
+need to take my son off my passport so he can get his own
+
+my child is listed on my passport from years ago, can that be removed
+
+remove kid frm my passport
+
+so my passport is really old, like from when my kids were babies, and back then you could add your children to your own passport, well now my daughter is 17 and needs her own passport but i think she's still listed on mine, how do i get her taken off
+
+delete child name passport how much
+
+is this the same as an amendment or is it different
+
+my child's name is on my old passport
+what form do i actually need to fill for this
+
+i need to remove my son from my passport
+oh wait i think it might already be removed, let me check first, can i come back to this
+
+## CATEGORY: G — Emergency Certificate (India and Nepal)
+i'm going on a buddhist pilgrimage to india, what travel document do i need
+
+need something to travel to nepal for a pilgrimage trip
+
+whats an emergency certificate
+
+emergancy certificate india nepal cost
+
+our temple is organizing a pilgrimage group to india next month and several of us don't have passports, someone mentioned there's a cheaper document just for this kind of trip, what is that and how do we apply
+
+can i use an emergency certificate to visit any country or just india and nepal
+
+emergency certificate
+does this work for a regular passport too or only these two countries
+
+## CATEGORY: H — General information (not tied to one service)
+where is the head office located
+
+what are the working hours
+
+do i need to book an appointment
+
+which office should i go to, i live in matara
+
+what is an authorised photo studio
+
+do i need a printed photo or can i just go to any studio
+
+what makes a photo valid for a passport
+
+where can i find authorised photo studios near me in kandy
+
+do i need my birth certificate for this
+
+what is form k 35a
+
+do i need to give fingerprints, im 45
+
+do children need to give fingerprints too
+
+can i apply online
+
+wheres do i get the application form
+
+what if my birth certificate is in tamil, is that a problem
+
+do i need photocopies of everything or just originals
+
+how do i pay the fee, cash or card
+
+is any part of the fee refundable if i change my mind
+
+how long does 30 working days actually mean, does that include weekends
+
+how do i collect my passport once its ready, do you sms me
+
+can my brother collect my passport for me if im not available
+
+how long is a passport valid for
+
+when should i start renewing before it expires
+
+im applying from dubai, how does that work
+
+which sri lankan mission handles applications in qatar
+
+does the application form need to be filled in english
+
+## CATEGORY: I — Greetings and single words
+hi
+
+hello
+
+help
+
+ayubowan
+
+good morning
+
+passport
+
+😊
+
+what can you do
+
+## CATEGORY: J — Out of scope, three different kinds
+### J1 — another Sri Lankan government service
+how do i renew my driving licence
+
+i need a new birth certificate for my son
+
+where do i apply for a nic
+
+i need a copy of my marriage certificate
+
+### J2 — not government at all
+whats the weather like in colombo today
+
+who won the cricket match last night
+
+who is the president of sri lanka
+
+write me a poem about the ocean
+
+### J3 — passport-related but genuinely unknown to the corpus
+can i pay extra to get my passport delivered to my home
+
+is there a passport office in jaffna that does saturday appointments
+
+do you offer a whatsapp number i can message
+
+can i track my application status online

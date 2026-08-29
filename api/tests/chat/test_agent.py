@@ -10,6 +10,8 @@ precedent for 6.9's verification-gate tests.
 
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from app.chat.agent import _verify_submission, answer_with_agent
 from app.db.session import SessionLocal
 from app.engine.resolver import RENEWAL_SERVICE_CODE
@@ -39,6 +41,7 @@ def _delete_case(case_id) -> None:
         db.close()
 
 
+@pytest.mark.real_api
 def test_amend_vs_renew_produces_a_multi_step_trace_with_both_fees(db):
     """DONE WHEN: "Should I amend my passport or get a new one?" calls
     get_fee twice and retrieve_documents at least once, and states both

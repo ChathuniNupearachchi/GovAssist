@@ -1,16 +1,22 @@
-"""Phase 4 seed data: adult passport renewal and passport amendment.
+"""Phase 4 seed data: adult passport renewal.
 
 Hand-enters the rule content described in the phase-4-rules-engine
 change's proposal.md/design.md into the schema built in Phase 2 (and
 extended in this phase with per-fact source citations and
 RESOLUTION_NOTE). Every fact below was verified directly against the
-extracted text of pages_e.php?id=7, id=8, and id=10 (see design.md's
-Context) before being hand-entered here.
+extracted text of pages_e.php?id=7 and id=8 (see design.md's Context)
+before being hand-entered here.
 
 Idempotent: re-running this script wipes and rebuilds the
-`passport-renewal` and `passport-amendment` services (and the
-`urgent_office_conflict` resolution note) from scratch, so it is safe to
-run repeatedly against a dev database without accumulating duplicates.
+`passport-renewal` service (and the `urgent_office_conflict` resolution
+note) from scratch, so it is safe to run repeatedly against a dev
+database without accumulating duplicates. Also still wipes any
+`passport-amendment` rows for idempotent cleanup (`AMENDMENT_CODE`
+below), but no longer SEEDS that service — `app.seed.phase9_amendment`
+owns it now (Phase 9's amendment implementation: all 6 alteration
+types, applying_from-aware offices, replacing this file's old 2-
+Requirement Change-of-Name-only stub). Always run phase9_amendment's
+seed AFTER this one — `tests/conftest.py` already does.
 
 Run with:  python -m app.seed.phase4_renewal
 """
@@ -36,23 +42,6 @@ from app.models import (
     SourceDocument,
 )
 
-# Common secular occupations, used to skip the buddhist_priest question
-# once a citizen has already stated one — see the QUESTION_CONDITION
-# linked to the buddhist_priest Question below. An exact-match `in`
-# condition against free text is a heuristic, not true understanding:
-# it only fires when the citizen's stated profession happens to match
-# this list's casing/wording exactly (the classifier records whatever
-# casing the citizen's own words implied — see design.md's note on this
-# limitation). Unmatched or unanswered professions still fall through to
-# asking buddhist_priest, which is the safe direction to fail in.
-SECULAR_PROFESSIONS = [
-    "Doctor", "Teacher", "Engineer", "Nurse", "Accountant", "Lawyer",
-    "Businessman", "Business", "Driver", "Farmer", "Student", "Clerk",
-    "Officer", "Manager", "Government Officer", "Private Sector Employee",
-    "Housewife", "Retired", "Unemployed", "Police Officer", "Soldier",
-    "Banker", "Shop Owner", "Architect", "Pharmacist", "Dentist",
-]
-
 RENEWAL_CODE = "passport-renewal"
 AMENDMENT_CODE = "passport-amendment"
 CONFLICT_NOTE_CODE = "urgent_office_conflict"
@@ -68,6 +57,10 @@ EXPECTED_ATTRIBUTES = {
     "section_19_2",
     "profession",
     "buddhist_priest",
+    # Added with the Downloads-page re-verification: applying_from now
+    # gates a Requirement too (which application form applies), not just
+    # the district QUESTION — see below.
+    "applying_from",
 }
 # "service_basis" and "district" intentionally have no Condition row:
 # the fee calculator compares the case's basis answer directly against
@@ -158,9 +151,13 @@ def seed(db: Session) -> None:
 
     doc_id8 = _source_document(db, "pages_e.php?id=8")
     doc_id7 = _source_document(db, "pages_e.php?id=7")
-    doc_id10 = _source_document(db, "pages_e.php?id=10")
+    doc_id9 = _source_document(db, "pages_e.php?id=9")
+    doc_id24 = _source_document(db, "pages_e.php?id=24")
+    doc_om_circular = _source_document(db, "circulars/om_01_2019.pdf")
     doc_form_pdf = _source_document(db, "applications/passport_application.pdf")
+    doc_form_pdf_handfill = _source_document(db, "applications/application.pdf")
     doc_instructions_pdf = _source_document(db, "applications/instructions_english_td.pdf")
+    doc_om_form_pdf = _source_document(db, "applications/new_om_application_form.pdf")
 
     # -- Offices -----------------------------------------------------
     # Head Office + 5 Regional Offices already exist from Phase 2's seed.
@@ -183,13 +180,10 @@ def seed(db: Session) -> None:
     renewal_service = Service(
         code=RENEWAL_CODE, name="Renew an Ordinary Passport", category="passports"
     )
-    amendment_service = Service(
-        code=AMENDMENT_CODE, name="Amend Passport Details", category="passports"
-    )
-    db.add_all([renewal_service, amendment_service])
+    db.add(renewal_service)
     db.flush()
 
-    # -- Rule versions ---------------------------------------------------
+    # -- Rule version ----------------------------------------------------
     now = datetime.now(timezone.utc)
     renewal_rv = RuleVersion(
         service_id=renewal_service.id,
@@ -199,15 +193,7 @@ def seed(db: Session) -> None:
         status="draft",
         verified_at=now,
     )
-    amendment_rv = RuleVersion(
-        service_id=amendment_service.id,
-        source_document_id=doc_id10.id,
-        approved_by=None,
-        version_number=1,
-        status="draft",
-        verified_at=now,
-    )
-    db.add_all([renewal_rv, amendment_rv])
+    db.add(renewal_rv)
     db.flush()
 
     # -- Renewal intake questions ---------------------------------------
@@ -254,22 +240,93 @@ def seed(db: Session) -> None:
     # operator — see design.md's Condition.attribute decision.
     cond_profession_empty = make_condition("profession", "equals", "")
     cond_buddhist_priest = make_condition("buddhist_priest", "equals", "true")
-    cond_profession_secular = make_condition(
-        "profession", "in", ",".join(SECULAR_PROFESSIONS)
-    )
+    # Gates the district question (below) AND, as of the Downloads-page
+    # re-verification (pages_e.php?id=24), which application-form
+    # Requirement applies — the domestic K-35A vs. the Overseas Missions
+    # Passport Application. Two separate Condition rows (not one
+    # in/negated pair) so each reads as its own positive fact, matching
+    # this file's existing style for other two-valued attributes.
+    cond_applying_from_sri_lanka = make_condition("applying_from", "equals", "sri_lanka")
+    cond_applying_from_abroad = make_condition("applying_from", "equals", "abroad")
 
     # -- Question relevance (data-driven, not a code special-case) --------
-    # buddhist_priest is skipped once profession clearly names a secular
-    # occupation — asking someone who just said "I'm a doctor" whether
-    # they're a Buddhist priest reads as not listening. This is the same
-    # flat, all-linked-conditions-pass, optionally-negated shape
-    # REQUIREMENT_CONDITION already uses, applied to a QUESTION instead —
-    # see QuestionCondition's docstring in models.py.
+    # buddhist_priest carries NO suppressing condition — it is asked of
+    # every applicant unconditionally, regardless of profession (bug fix
+    # — manual QA bug #6). It previously used to be skipped once
+    # profession named a secular occupation, but monks in Sri Lanka
+    # commonly also hold one (teacher, scholar, lecturer); suppressing
+    # the question on that basis silently excluded a monk who answered
+    # e.g. "teacher" from the Samanera/Higher Ordination certificate
+    # requirement, which is mandatory for priests regardless of any other
+    # occupation. Question ORDER also changed to ask buddhist_priest
+    # before profession (see RENEWAL_QUESTIONS) so this can never again
+    # be implemented as "skip based on the profession just given."
+    #
+    # profession itself IS gated — on age, not on any other answer (bug
+    # fix — manual QA bug #5): reuses cond_age_lt_16 negated, so it's
+    # relevant only once the applicant is known to be 16 or older
+    # (mirrors the fingerprint requirement's own use of this same
+    # condition). This is close to redundant with the scope gate (bug
+    # fix #2) — a true under-16 case is refused immediately after age is
+    # recorded and never reaches this question via the normal chat flow
+    # — but is kept as an explicit, defense-in-depth gate on the
+    # question's own relevance data, not solely on that separate
+    # code-level short-circuit (e.g. GET /case/{id}/next-question calls
+    # `next_question` directly and has no scope-gate check of its own).
     db.add(
         QuestionCondition(
-            question_id=questions["buddhist_priest"].id,
-            condition_id=cond_profession_secular.id,
-            negated=True,  # relevant unless profession is IN the secular list
+            question_id=questions["profession"].id,
+            condition_id=cond_age_lt_16.id,
+            negated=True,  # relevant unless age < 16
+        )
+    )
+
+    # district is gated on applying_from == "sri_lanka" (Phase 9's
+    # renewal re-verification, replacing an earlier fragile fix that
+    # tried to recognize "abroad"/"overseas" phrases directly against
+    # the district question itself). A citizen answering "abroad" to
+    # applying_from is never asked which Sri Lankan district they're
+    # in — id=9's Mission path has no district concept at all. Every
+    # other renewal question (age, holds_passport, name_changed,
+    # dual_citizen, section_19_2, buddhist_priest, profession) still
+    # applies to an overseas applicant per the sources read for this
+    # phase — none of id=7/id=8/id=9 states otherwise for those facts.
+    db.add(
+        QuestionCondition(
+            question_id=questions["district"].id,
+            condition_id=cond_applying_from_sri_lanka.id,
+            negated=False,  # relevant only once applying_from == "sri_lanka"
+        )
+    )
+
+    # photo_district (item 5 of the intake-parsing fix) — same gate as
+    # district itself: an overseas applicant's photo studio is out of
+    # scope for this app's Sri Lankan studio directory.
+    db.add(
+        QuestionCondition(
+            question_id=questions["photo_district"].id,
+            condition_id=cond_applying_from_sri_lanka.id,
+            negated=False,
+        )
+    )
+
+    # service_basis (normal/urgent) — BUG FIX (seven-corrections round,
+    # item 3): used to be deliberately left ungated ("id=9 is silent on
+    # whether one-day service exists for Mission submissions — asserting
+    # it doesn't would be inventing a fact"). Corrected: same-day/urgent
+    # service is a domestic counter service (id=8's own urgent-fee rows
+    # are all Head-Office/Regional-Office counter transactions); nothing
+    # in id=9 or the fee circular OM/01/2019 (both checked this round —
+    # see design.md's "Timelines" section) describes a mission
+    # equivalent at all, so there is no tier to ask an overseas
+    # applicant to choose between. The source silence itself is recorded
+    # in design.md rather than inferred into a fact — but a citizen is
+    # still never asked a question with no meaningful answer either way.
+    db.add(
+        QuestionCondition(
+            question_id=questions["service_basis"].id,
+            condition_id=cond_applying_from_sri_lanka.id,
+            negated=False,
         )
     )
 
@@ -277,6 +334,7 @@ def seed(db: Session) -> None:
         {c.attribute for c in [
             cond_age_lt_16, cond_age_lt_61, cond_name_changed, cond_holds_passport,
             cond_dual_citizen, cond_section_19_2, cond_profession_empty, cond_buddhist_priest,
+            cond_applying_from_sri_lanka,
         ]}
     ), "Seed script is missing a Condition for an expected attribute — see design.md's Risk mitigation."
 
@@ -291,18 +349,63 @@ def seed(db: Session) -> None:
     )
     db.add(studio_ack)
     db.flush()
+    # BUG FIX (conversational-quality round, item 3): used to be
+    # unconditional — authorised photo studios are a Sri Lankan
+    # domestic network (id=8's own text), an overseas applicant through
+    # a foreign mission cannot use one. Checked pages_e.php?id=9 for
+    # what the overseas photograph requirement actually is instead — it
+    # is silent on photographs entirely (no mention anywhere in that
+    # page), so nothing is encoded in its place rather than guessed;
+    # this requirement simply doesn't apply overseas.
+    _link(db, studio_ack, cond_applying_from_sri_lanka, negated=False)
 
-    # Application form K-35A — unconditional, every renewal needs it,
-    # sequenced before the document items (10+): the form must be
-    # obtained and filled before the supporting documents are assembled
-    # around it. Source: pages_e.php?id=8, "Where can I obtain an
-    # Application Form?" for the pickup locations; the two PDF URLs are
-    # the exact ones the scraper fetched (SOURCE_DOCUMENT.source_url),
-    # not hand-typed, so they're already verified as live. Divisional
-    # Secretariats are named here only as a form-pickup location — never
-    # as a submission location; `app.engine.offices.resolve_offices`
-    # never selects a `type=ds` office, so the plan's offices list can't
-    # imply otherwise either.
+    # Application form K-35A — DOMESTIC variant only as of the
+    # Downloads-page re-verification (pages_e.php?id=24): gated on
+    # applying_from == "sri_lanka" (below). An overseas applicant gets a
+    # different Requirement entirely — the Overseas Missions Passport
+    # Application, right after this one — id=24's own "Overseas
+    # Missions" section labels it "Only for overseas applicants", and
+    # id=9 describes a materially different submission channel (through
+    # a Mission, never a domestic office). Sequenced before the document
+    # items (10+): the form must be obtained and filled before the
+    # supporting documents are assembled around it. Source: pages_e.php
+    # ?id=8, "Where can I obtain an Application Form?" for the pickup
+    # locations; the PDF URLs are the exact ones the scraper fetched
+    # (SOURCE_DOCUMENT.source_url), not hand-typed, so they're already
+    # verified as live. Divisional Secretariats are named here only as a
+    # form-pickup location — never as a submission location;
+    # `app.engine.offices.resolve_offices` never selects a `type=ds`
+    # office, so the plan's offices list can't imply otherwise either.
+    # "Overseas Sri Lankan Mission" dropped from this pickup list (it
+    # used to be listed here) — this Requirement is domestic-only now,
+    # and a Mission wouldn't hand out the domestic form variant anyway.
+    #
+    # Two downloadable variants, both Form K-35A, both offered (id=24's
+    # own "Downloadable Format" column distinguishes them): "Online Fill
+    # and Printable" (fill on-screen, then print) and "Downloadable"
+    # (print blank, then fill by hand) — a citizen without a computer to
+    # fill the first one still has a usable path. Neither label is this
+    # project's own wording; id=24's own column headers are quoted
+    # directly rather than asserting which one is "for" handwriting
+    # (not stated in so many words on either PDF read for this).
+    #
+    # phase-9-service-expansion re-verification: this used to also
+    # assert "the application must be filled in English" — traced back
+    # during Phase 9's full re-read of id=7/id=8/id=9/id=10 and found
+    # unsourced; no fetched page or PDF states an English-only
+    # requirement (see design.md's "Forms" general-info entry, which
+    # flags this specifically as a gap). Removed rather than left in on
+    # the strength of an untraceable claim. The Client Undertaking
+    # Section signature requirement IS sourced — from id=9 ("This
+    # section has to be signed by the applicant... No application will
+    # be accepted without applicant's signature in CUS"), not id=8 (this
+    # Requirement's own source_document_id) — a minor citation mismatch
+    # kept as a single Requirement rather than split, since K-35A is the
+    # same form regardless of which channel a citizen reads about it on.
+    #
+    # Printing note added per id=24's own instruction, applies to every
+    # downloadable form offered anywhere in this seed (both variants
+    # here, and the Overseas Missions form below).
     application_form = Requirement(
         rule_version_id=renewal_rv.id,
         source_document_id=doc_id8.id,
@@ -311,18 +414,24 @@ def seed(db: Session) -> None:
         freshness_rule=(
             "A hard copy can be obtained from: the Head Office, "
             "Battaramulla; the Regional Offices at Kandy, Matara, "
-            "Vavuniya, Kurunegala, or Jaffna; your area's Divisional "
+            "Vavuniya, Kurunegala, or Jaffna; or your area's Divisional "
             "Secretariat (pickup only — applications are not accepted "
-            "for submission at a Divisional Secretariat); or an "
-            "Overseas Sri Lankan Mission. The application must be "
-            "filled in English, and the Client Undertaking Section "
-            "must be signed — no application is accepted without it."
+            "for submission at a Divisional Secretariat). The Client "
+            "Undertaking Section must be signed — no application is "
+            "accepted without it. If printing a downloaded copy "
+            "yourself, it must be laser-printed on A4 paper "
+            "(pages_e.php?id=24)."
         ),
         sequence=2,
         resources=[
             {
-                "label": "Application form K-35A",
+                "label": "Application form K-35A (Online Fill and Printable)",
                 "url": doc_form_pdf.source_url,
+                "type": "pdf",
+            },
+            {
+                "label": "Application form K-35A (Downloadable — fill by hand)",
+                "url": doc_form_pdf_handfill.source_url,
                 "type": "pdf",
             },
             {
@@ -334,8 +443,85 @@ def seed(db: Session) -> None:
     )
     db.add(application_form)
     db.flush()
+    _link(db, application_form, cond_applying_from_sri_lanka, negated=False)
 
-    fingerprints = Requirement(
+    # Overseas Missions Passport Application — the overseas counterpart
+    # to the domestic K-35A above, gated on applying_from == "abroad".
+    # id=24's "Overseas Missions" section: "Overseas Missions Passport
+    # Application (Only for overseas applicants)", still labeled
+    # "Form K - 35 A" but a DIFFERENT PDF (new_om_application_form.pdf,
+    # not passport_application.pdf/application.pdf) — its own extracted
+    # text confirms it also covers a child under 16 and an Emergency/
+    # Identity Certificate application on the same form (fields for a
+    # parent/guardian's details "If this application is for a child
+    # below the age of 16 years", and the form's own header:
+    # "APPLICATION FOR A SRI LANKAN PASSPORT, EMERGENCY/IDENTITY
+    # CERTIFICATE") — relevant to `passport-under-16`/`emergency-
+    # certificate` once those services are built, not encoded here since
+    # this Requirement lives on `passport-renewal` only. Submission
+    # channel and the CUS signature requirement are id=9's (seq 3): the
+    # form is submitted to the Sri Lanka Embassy/Consulate, with the
+    # Client Undertaking Section signed and handed to the consular
+    # officer — cited here from id=9 despite this Requirement's own
+    # source_document_id being id=24 (where the specific PDF/label
+    # facts are confirmed), same minor-citation-mismatch precedent the
+    # domestic Requirement above already carries.
+    #
+    # The five OM annexes (i-v) are deliberately NOT added as
+    # Requirements here — see design.md's "Overseas Missions form set"
+    # note: annex iii (parent's consent) and iv (lost/stolen complaint)
+    # don't apply to an adult renewal at all (they belong to the
+    # not-yet-built under-16 and lost-stolen services respectively), and
+    # annexes i/ii/v's real trigger conditions (a citizenship-proof
+    # certificate type, PR/settlement status abroad, and section 5(2)
+    # registration specifically) aren't facts this intake collects for
+    # any service yet — adding them unconditionally would show a
+    # renewing overseas citizen with an ordinary passport three
+    # affidavits that don't apply to them, which is exactly the
+    # "wrong checklist is worse than no checklist" failure mode
+    # CLAUDE.md warns against. Left as a documented gap, not guessed.
+    overseas_application_form = Requirement(
+        rule_version_id=renewal_rv.id,
+        source_document_id=doc_id24.id,
+        label="Completed Overseas Missions Passport Application form",
+        kind="prerequisite",
+        freshness_rule=(
+            "Submit the completed form, with supporting documents, to "
+            "the Sri Lanka Embassy or Consulate in your country (or the "
+            "nearest one, if none is available in your country of "
+            "residence). The Client Undertaking Section must be signed "
+            "and handed to the consular officer — no application is "
+            "accepted without it (pages_e.php?id=9). If printing a "
+            "downloaded copy yourself, it must be laser-printed on A4 "
+            "paper (pages_e.php?id=24)."
+        ),
+        sequence=2,
+        resources=[
+            {
+                "label": "Overseas Missions Passport Application (Form K-35A, overseas applicants only)",
+                "url": doc_om_form_pdf.source_url,
+                "type": "pdf",
+            },
+        ],
+    )
+    db.add(overseas_application_form)
+    db.flush()
+    _link(db, overseas_application_form, cond_applying_from_abroad, negated=False)
+
+    # BUG FIX (seven-corrections round, item 1): fingerprints used to be
+    # ONE unconditional requirement regardless of applying_from, framed
+    # as an intake prerequisite ("provide fingerprints in person") for
+    # every applicant — wrong for an overseas applicant, per pages_e.
+    # php?id=9's own "INSTRUCTION FOR OVERSEAS APPLICANTS" section
+    # (already ingested, doc_id9): fingerprints are NOT collected before
+    # or during the mission application. They're captured on the
+    # applicant's FIRST ARRIVAL in Sri Lanka after the passport is
+    # issued — a Biometric Data Acquisition (BDA) form is completed at
+    # the airport, then the applicant reports to the Head Office or a
+    # Regional Office to give biometric data. Split into two mutually
+    # exclusive requirements on applying_from, matching every other
+    # domestic/overseas split this service already has.
+    fingerprints_domestic = Requirement(
         rule_version_id=renewal_rv.id,
         source_document_id=doc_id7.id,
         label=(
@@ -345,10 +531,37 @@ def seed(db: Session) -> None:
         kind="prerequisite",
         sequence=3,
     )
-    db.add(fingerprints)
+    db.add(fingerprints_domestic)
     db.flush()
-    _link(db, fingerprints, cond_age_lt_61, negated=False)  # age < 61
-    _link(db, fingerprints, cond_age_lt_16, negated=True)  # NOT age < 16  => age >= 16
+    _link(db, fingerprints_domestic, cond_age_lt_61, negated=False)  # age < 61
+    _link(db, fingerprints_domestic, cond_age_lt_16, negated=True)  # NOT age < 16  => age >= 16
+    _link(db, fingerprints_domestic, cond_applying_from_sri_lanka, negated=False)
+
+    # Cross-checked against pages_e.php?id=9's own office list for this
+    # step: Head Office, Matara, Kandy, Vavuniya, Kurunegala — Jaffna is
+    # absent there, unlike the Regional Office list this service uses
+    # everywhere else (which includes Jaffna). That's an open conflict
+    # in the department's own sources, not a project error — kept
+    # surfaced in the label's own wording (generic "a Regional Office",
+    # not id=9's narrower five-office list) rather than silently
+    # resolved either way. See design.md's "BDA office list conflict".
+    fingerprints_overseas = Requirement(
+        rule_version_id=renewal_rv.id,
+        source_document_id=doc_id9.id,
+        label=(
+            "On your first arrival in Sri Lanka after your passport is "
+            "issued, complete a Biometric Data Acquisition (BDA) form at "
+            "the airport, then report to the Head Office or a Regional "
+            "Office to give your fingerprints"
+        ),
+        kind="step",
+        sequence=3,
+    )
+    db.add(fingerprints_overseas)
+    db.flush()
+    _link(db, fingerprints_overseas, cond_age_lt_61, negated=False)
+    _link(db, fingerprints_overseas, cond_age_lt_16, negated=True)
+    _link(db, fingerprints_overseas, cond_applying_from_abroad, negated=False)
 
     new_nic = Requirement(
         rule_version_id=renewal_rv.id,
@@ -439,6 +652,14 @@ def seed(db: Session) -> None:
         _link(db, req, cond_dual_citizen, negated=False)
 
     # -- Fees (source: pages_e.php?id=8) ---------------------------------
+    # The below-16 tier reuses `cond_age_lt_16` (already created above
+    # for the fingerprints requirement) via FeeRule.condition_id — the
+    # Phase 2 schema already supports a conditional fee rule, this is
+    # its first use. Added for langgraph-orchestration-branch's
+    # tool-selection-instability fix: a golden-set scenario surfaced
+    # that `get_fee` had no way to return this tier at all, since it was
+    # never seeded as structured data, only present in the source page's
+    # text — see design.md.
     db.add_all(
         [
             FeeRule(
@@ -452,6 +673,42 @@ def seed(db: Session) -> None:
                 source_document_id=doc_id8.id,
                 base_amount=20000.00,
                 basis="urgent",
+            ),
+            FeeRule(
+                rule_version_id=renewal_rv.id,
+                source_document_id=doc_id8.id,
+                condition_id=cond_age_lt_16.id,
+                base_amount=3000.00,
+                basis="normal",
+            ),
+            FeeRule(
+                rule_version_id=renewal_rv.id,
+                source_document_id=doc_id8.id,
+                condition_id=cond_age_lt_16.id,
+                base_amount=9000.00,
+                basis="urgent",
+            ),
+            # BUG FIX (seven-corrections round, item 5): an overseas
+            # applicant used to fall through to the domestic LKR 10,000
+            # unconditional row above — there was no applying_from-
+            # conditional fee tier at all. Source: OM/01/2019's own
+            # "Revised Charges for Issuance of Sri Lankan Travel
+            # Documents" table, row 01 "All Countries passport" — US$158,
+            # verified by two independent OCR passes (Tesseract and
+            # Gemini vision agreed on every figure in this table) before
+            # being encoded here. `basis="normal"` only — item 3's own
+            # fix means service_basis is never asked/recorded for an
+            # overseas applicant, so `resolve_fee`'s basis lookup always
+            # falls back to "normal" for this case; there is no urgent
+            # tier in the source for a mission application to encode
+            # under "urgent" instead (see design.md's "Timelines" note).
+            FeeRule(
+                rule_version_id=renewal_rv.id,
+                source_document_id=doc_om_circular.id,
+                condition_id=cond_applying_from_abroad.id,
+                base_amount=158.00,
+                currency="USD",
+                basis="normal",
             ),
         ]
     )
@@ -476,45 +733,21 @@ def seed(db: Session) -> None:
         )
     )
 
-    # -- Amendment service (source: pages_e.php?id=10) ---------------------
-    db.add(
-        FeeRule(
-            rule_version_id=amendment_rv.id,
-            source_document_id=doc_id10.id,
-            base_amount=1200.00,
-            # CHECK constraint requires normal|urgent; amendment has no
-            # urgent/normal split in the source (a single flat fee), so
-            # this is a fixed choice to satisfy the column, not a real
-            # distinction — see design.md.
-            basis="normal",
-        )
-    )
-    db.add_all(
-        [
-            Requirement(
-                rule_version_id=amendment_rv.id,
-                source_document_id=doc_id10.id,
-                label="Passport",
-                kind="document",
-                sequence=1,
-            ),
-            Requirement(
-                rule_version_id=amendment_rv.id,
-                source_document_id=doc_id10.id,
-                label="Marriage certificate (to confirm name change)",
-                kind="document",
-                sequence=2,
-            ),
-        ]
-    )
-
     db.flush()
 
-    # -- Approve both rule versions ---------------------------------------
+    # -- Approve the rule version -------------------------------------
+    # Amendment used to be seeded here too (a flat 2-Requirement stub —
+    # Passport + Marriage certificate, Change of Name only). Phase 9's
+    # amendment implementation replaced it entirely with its own full
+    # service (all 6 alteration types, applying_from-aware offices) —
+    # see `app.seed.phase9_amendment`, which now owns `passport-
+    # amendment`'s Service/RuleVersion/Questions/Requirements end to
+    # end. `_wipe_existing` above still clears AMENDMENT_CODE rows for
+    # idempotent cleanup, but always run phase9_amendment's seed AFTER
+    # this one (see that script's own docstring; `tests/conftest.py`
+    # already does).
     renewal_rv.status = "approved"
     renewal_rv.approved_by = "phase4-seed-script"
-    amendment_rv.status = "approved"
-    amendment_rv.approved_by = "phase4-seed-script"
 
     db.commit()
 
@@ -523,7 +756,7 @@ def main() -> None:
     db = SessionLocal()
     try:
         seed(db)
-        print("Phase 4 renewal + amendment rule data seeded and approved.")
+        print("Phase 4 renewal rule data seeded and approved.")
     finally:
         db.close()
 

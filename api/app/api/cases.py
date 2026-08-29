@@ -1,18 +1,18 @@
 """6.3 GET /case/{id}/next-question, POST /case/{id}/resolve.
 
-`resolve` assembles the case's `CaseAnswer` rows into the same
-`{attribute: value}` dict shape the engine already expects (via the same
-`ATTRIBUTE_BY_PROMPT` reverse-lookup `next_question.py` uses), checks
-`next_question` first, and returns a "not ready" 409 naming the pending
-question rather than letting `resolve_case`'s `ValueError` (on a missing
-`age`) leak through as an unhandled 500 — see design.md's "`/case/{id}/
-resolve` does not itself drive intake" decision.
+`resolve` (task 1.9 of `langgraph-orchestration-branch`) now invokes the
+compiled graph's `action="resolve"` path (`app.graph.build.
+run_resolve_action`) instead of calling `app.engine.resolver.resolve_case`
+directly — the graph's `next_question`/`resolve` nodes reproduce the
+exact same readiness check and age-first precedence this route
+previously implemented inline (see design.md's "two entry paths sharing
+next_question" decision). The route's HTTP contract (404/409/200
+shapes) is unchanged.
 """
 
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
@@ -22,8 +22,7 @@ from app.api.schemas import CaseResolutionOut, QuestionOut
 from app.db.session import get_db
 from app.engine.next_question import next_question
 from app.engine.renewal_intake import ATTRIBUTE_BY_PROMPT
-from app.engine.resolver import resolve_case
-from app.engine.types import IncompleteCaseError
+from app.graph.build import run_resolve_action
 from app.models import Case, CaseAnswer, Question
 
 router = APIRouter(prefix="/case", tags=["cases"])
@@ -69,48 +68,21 @@ def get_next_question(
     )
 
 
-def _is_under_16(answers: dict[str, str]) -> bool:
-    age = answers.get("age")
-    return age is not None and float(age) < 16
-
-
 @router.post("/{case_id}/resolve", response_model=CaseResolutionOut)
 def resolve(case_id: uuid.UUID, db: Session = Depends(get_db)) -> CaseResolutionOut:
-    case = _get_case(db, case_id)
-    answers = _answers_dict(db, case_id)
+    _get_case(db, case_id)  # 404 if the case doesn't exist
 
-    # Age is evaluated first, unconditionally, mirroring resolve_case's
-    # own precedence (see app.engine.resolver's docstring) — an
-    # under-16 case short-circuits to the scope-gate response as soon
-    # as age is known, without waiting on the rest of intake. Every
-    # other case still needs the full intake before it's "ready".
-    if not _is_under_16(answers):
-        pending = next_question(db, case.service_id, answers)
-        if pending is not None:
-            raise HTTPException(
-                status_code=409,
-                detail=f"Case is not ready to resolve — still pending: {pending.prompt}",
-            )
+    # The graph's `next_question` node (action="resolve") does the same
+    # age-first-then-readiness check this route used to do inline, and
+    # its `resolve` node does the same `resolve_case` call plus the
+    # `case.resolved_at` commit — see design.md's "two entry paths
+    # sharing next_question" decision.
+    result = run_resolve_action(db, case_id)
 
-    # The pending-question check above already blocks an incomplete case
-    # from reaching here; this catch is a backstop, not the primary
-    # guard — `resolve_case` enforces the same completeness rule
-    # internally (see its docstring), so the two can never disagree in
-    # normal operation, but a caller should never rely solely on its own
-    # pre-check when the engine itself refuses to guess.
-    try:
-        resolution = resolve_case(db, answers)
-    except IncompleteCaseError as exc:
+    if not result.get("ready", False):
         raise HTTPException(
             status_code=409,
-            detail=f"Case is not ready to resolve — still pending: {exc.pending_prompt}",
-        ) from exc
+            detail=f"Case is not ready to resolve — still pending: {result.get('pending_question')}",
+        )
 
-    # 6.10: marks the case resolved so device-to-case resolution
-    # (app.chat.session.resolve_case_for_device) stops resuming it — a
-    # citizen who already has a completed plan starts a fresh case next
-    # time, rather than being stuck "continuing" a finished one.
-    case.resolved_at = datetime.now(timezone.utc)
-    db.commit()
-
-    return CaseResolutionOut.from_resolution(resolution)
+    return CaseResolutionOut.from_resolution_dict(result)

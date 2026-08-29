@@ -7,6 +7,8 @@ import type { RootStackParamList } from "../navigation/AppNavigator";
 import { Button } from "../components/Button";
 import { ShieldLogo } from "../components/ShieldLogo";
 import { GoogleIcon } from "../components/GoogleIcon";
+import { SignUpModal } from "../components/SignUpModal";
+import { useAuthStore } from "../store/authStore";
 import { colors, spacing, fontSize, radius, touchTarget } from "../theme/tokens";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Login">;
@@ -16,8 +18,20 @@ export function LoginScreen({ navigation }: Props) {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [googlePressed, setGooglePressed] = useState(false);
+  const [signUpVisible, setSignUpVisible] = useState(false);
+
+  const signingIn = useAuthStore((s) => s.signingIn);
+  const signInError = useAuthStore((s) => s.signInError);
+  const signIn = useAuthStore((s) => s.signIn);
 
   const goToApp = () => navigation.replace("Departments");
+
+  const handleSignIn = async () => {
+    const success = await signIn(email, password);
+    if (success) {
+      goToApp();
+    }
+  };
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
@@ -123,7 +137,19 @@ export function LoginScreen({ navigation }: Props) {
             </Pressable>
           </View>
 
-          <Button label="Sign in" onPress={goToApp} fullWidth />
+          {signInError ? (
+            <Text accessibilityRole="alert" style={{ fontSize: fontSize.caption, color: colors.danger }}>
+              {signInError}
+            </Text>
+          ) : null}
+
+          <Button
+            label="Sign in"
+            onPress={handleSignIn}
+            loading={signingIn}
+            disabled={!email.trim() || !password}
+            fullWidth
+          />
 
           <Pressable
             onPress={() => {}}
@@ -139,7 +165,7 @@ export function LoginScreen({ navigation }: Props) {
           <Button label="Skip — continue without an account" onPress={goToApp} variant="secondary" fullWidth />
 
           <Pressable
-            onPress={() => {}}
+            onPress={() => setSignUpVisible(true)}
             accessibilityRole="link"
             accessibilityLabel="Sign up"
             style={{
@@ -154,6 +180,15 @@ export function LoginScreen({ navigation }: Props) {
           </Pressable>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      <SignUpModal
+        visible={signUpVisible}
+        onClose={() => setSignUpVisible(false)}
+        onSuccess={() => {
+          setSignUpVisible(false);
+          goToApp();
+        }}
+      />
     </SafeAreaView>
   );
 }

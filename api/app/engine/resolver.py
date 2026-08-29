@@ -25,6 +25,11 @@ from app.models import RuleVersion, Service
 
 RENEWAL_SERVICE_CODE = "passport-renewal"
 AMENDMENT_SERVICE_CODE = "passport-amendment"
+NEW_APPLICANT_SERVICE_CODE = "passport-new"
+LOST_STOLEN_SERVICE_CODE = "passport-lost-stolen"
+UNDER_16_SERVICE_CODE = "passport-under-16"
+CHILD_DELETION_SERVICE_CODE = "passport-child-deletion"
+EMERGENCY_CERTIFICATE_SERVICE_CODE = "emergency-certificate"
 SCOPE_GATE_UNDER_16 = (
     "GovAssist does not yet support passport applications for applicants "
     "under 16. Under-16 applications have their own document set, "
@@ -50,27 +55,50 @@ def _approved_rule_version(db: Session, service_code: str) -> RuleVersion:
 
 
 def _amendment_alternative(db: Session) -> AmendmentAlternative:
+    """Surfaced only when `name_changed == "true"` (see `resolve_case`
+    below) — the alternative being offered is specifically "amend your
+    existing passport's name instead of renewing," so this always
+    resolves the Change of Name alteration type. Phase 9's amendment
+    implementation made every non-Change-of-Name Requirement
+    conditional on `alteration_type` (see `app.seed.phase9_amendment`);
+    passing this explicitly (rather than the previous `answers={}`)
+    keeps this alternative's Requirement set from silently going empty
+    now that Change of Name's own documents are gated too."""
     amendment_rv = _approved_rule_version(db, AMENDMENT_SERVICE_CODE)
-    fee = resolve_fee(db, amendment_rv.id, basis="normal")
-    requirements = resolve_requirements(db, amendment_rv.id, answers={})
+    answers = {"alteration_type": "change_of_name"}
+    fee = resolve_fee(db, amendment_rv.id, basis="normal", answers=answers)
+    requirements = resolve_requirements(db, amendment_rv.id, answers=answers)
     return AmendmentAlternative(fee=fee, requirements=requirements)
 
 
-def resolve_case(db: Session, answers: dict[str, str]) -> CaseResolution:
-    """Resolve an adult passport renewal case.
+def resolve_case(
+    db: Session, answers: dict[str, str], service_code: str = RENEWAL_SERVICE_CODE
+) -> CaseResolution:
+    """Resolve a passport case for `service_code` — `passport-renewal`
+    by default (every existing caller predates `passport-new`, so the
+    default keeps them unchanged), or `passport-new` for a first-time
+    applicant. Both services share this one function — design.md's
+    service #2: "same documents/fee/form as renewal" (down to the same
+    office/fee resolvers below), so there is no first-time-specific
+    resolution logic here, only a different `service_code` selecting a
+    different service's own seeded Questions/Requirements/FeeRules.
 
-    Age SHALL be evaluated first, unconditionally, before any other
-    resolution runs — an under-16 answer short-circuits straight to the
-    scope-gate response with no requirements, fee, offices, or plan.
+    Age SHALL be evaluated first, before any other resolution runs — an
+    under-16 answer short-circuits straight to the scope-gate response
+    with no requirements, fee, offices, or plan, UNLESS `service_code`
+    IS `passport-under-16` (Phase 9 service #5) — that service's whole
+    premise is a child under 16, so the gate that exists to refuse a
+    minor's application everywhere else would refuse the one service
+    built specifically to handle it.
 
-    Every relevant renewal question SHALL be answered before a
-    requirement set is produced — raises `IncompleteCaseError` otherwise
-    rather than returning a `CaseResolution` built from partial answers.
-    A missing answer makes `condition_link_passes` fail *every* gating
-    condition it appears in, regardless of negation, so an incomplete
-    `answers` dict does not mean "everything not yet known to apply" —
-    it can silently suppress both sides of a branch at once (see
-    `IncompleteCaseError`'s docstring). Checked with the same
+    Every relevant question for `service_code` SHALL be answered before
+    a requirement set is produced — raises `IncompleteCaseError`
+    otherwise rather than returning a `CaseResolution` built from
+    partial answers. A missing answer makes `condition_link_passes` fail
+    *every* gating condition it appears in, regardless of negation, so
+    an incomplete `answers` dict does not mean "everything not yet known
+    to apply" — it can silently suppress both sides of a branch at once
+    (see `IncompleteCaseError`'s docstring). Checked with the same
     `next_question` this case's own intake already uses to decide
     whether it's done, so there is exactly one definition of "complete",
     not a second one duplicated here.
@@ -78,29 +106,33 @@ def resolve_case(db: Session, answers: dict[str, str]) -> CaseResolution:
     if "age" not in answers:
         raise ValueError("resolve_case requires an 'age' answer before resolving")
     age = float(answers["age"])
-    if age < 16:
+    if age < 16 and service_code != UNDER_16_SERVICE_CODE:
         return CaseResolution(scope_gate=ScopeGateResponse(reason=SCOPE_GATE_UNDER_16))
 
-    renewal_service = db.scalars(
-        select(Service).where(Service.code == RENEWAL_SERVICE_CODE)
-    ).first()
-    if renewal_service is None:
-        raise RuntimeError(f"Service '{RENEWAL_SERVICE_CODE}' has not been seeded.")
-    pending = next_question(db, renewal_service.id, answers)
+    service = db.scalars(select(Service).where(Service.code == service_code)).first()
+    if service is None:
+        raise RuntimeError(f"Service '{service_code}' has not been seeded.")
+    pending = next_question(db, service.id, answers)
     if pending is not None:
         raise IncompleteCaseError(pending.prompt)
 
-    renewal_rv = _approved_rule_version(db, RENEWAL_SERVICE_CODE)
-    requirements = resolve_requirements(db, renewal_rv.id, answers)
-    fee = resolve_fee(db, renewal_rv.id, basis=answers.get("service_basis", "normal"))
+    rule_version = _approved_rule_version(db, service_code)
+    requirements = resolve_requirements(db, rule_version.id, answers)
+    fee = resolve_fee(db, rule_version.id, basis=answers.get("service_basis", "normal"), answers=answers)
     offices = resolve_offices(
         db,
         district=answers.get("district"),
         basis=answers.get("service_basis", "normal"),
+        applying_from=answers.get("applying_from"),
     )
 
+    # Amendment is offered as a same-request alternative only for a
+    # citizen already renewing — a first-time applicant has no existing
+    # passport to amend, so there is nothing to compare against
+    # regardless of whether name_changed is true (design.md: "different
+    # citizen framing," not a shared amendment-alternative concept).
     amendment_alternative = None
-    if answers.get("name_changed") == "true":
+    if service_code == RENEWAL_SERVICE_CODE and answers.get("name_changed") == "true":
         amendment_alternative = _amendment_alternative(db)
 
     return CaseResolution(

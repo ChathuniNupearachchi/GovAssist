@@ -1,0 +1,3095 @@
+{
+  "category_pass_rates": {
+    "A": {
+      "passed": 12,
+      "total": 12
+    },
+    "B": {
+      "passed": 10,
+      "total": 10
+    },
+    "C": {
+      "passed": 10,
+      "total": 10
+    },
+    "D": {
+      "passed": 12,
+      "total": 12
+    },
+    "E": {
+      "passed": 11,
+      "total": 11
+    },
+    "F": {
+      "passed": 9,
+      "total": 9
+    },
+    "G": {
+      "passed": 7,
+      "total": 7
+    },
+    "H": {
+      "passed": 26,
+      "total": 26
+    },
+    "I": {
+      "passed": 8,
+      "total": 8
+    },
+    "J": {
+      "passed": 12,
+      "total": 12
+    }
+  },
+  "flagged_responses": [],
+  "explicit_assertions": {
+    "unexpected_answer_reasks_pending_question": {
+      "ok": true,
+      "detail": ""
+    },
+    "correction_updates_recorded_fact": {
+      "ok": false,
+      "detail": "recorded age is '34', expected '45'"
+    }
+  },
+  "per_category_detail": {
+    "A": [
+      {
+        "category_name": "Renew passport",
+        "scenario_index": 1,
+        "turns": [
+          {
+            "message": "my passport expired last month what do i do",
+            "reply": "I don't have that information.",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          }
+        ],
+        "resolve_status_code": null,
+        "error": null,
+        "technically_ok": true
+      },
+      {
+        "category_name": "Renew passport",
+        "scenario_index": 2,
+        "turns": [
+          {
+            "message": "need to renew my passport before it runs out",
+            "reply": "I don't have that information.",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          }
+        ],
+        "resolve_status_code": null,
+        "error": null,
+        "technically_ok": true
+      },
+      {
+        "category_name": "Renew passport",
+        "scenario_index": 3,
+        "turns": [
+          {
+            "message": "hi my passport is expiring in 3 months, do i need to do anything yet",
+            "reply": "I don't have that information.",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          }
+        ],
+        "resolve_status_code": null,
+        "error": null,
+        "technically_ok": true
+      },
+      {
+        "category_name": "Renew passport",
+        "scenario_index": 4,
+        "turns": [
+          {
+            "message": "passport renewal",
+            "reply": "I don't have that information.",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          }
+        ],
+        "resolve_status_code": null,
+        "error": null,
+        "technically_ok": true
+      },
+      {
+        "category_name": "Renew passport",
+        "scenario_index": 5,
+        "turns": [
+          {
+            "message": "Straightforward and a full sentence: I've had my passport ten years, it's about to expire, what do I need to bring to renew it",
+            "reply": "I don't have that information.",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          }
+        ],
+        "resolve_status_code": null,
+        "error": null,
+        "technically_ok": true
+      },
+      {
+        "category_name": "Renew passport",
+        "scenario_index": 6,
+        "turns": [
+          {
+            "message": "im not sure if i need to renew or get a totally new one, my old passport is somewhere in the house but i havent used it in like 8 years and i think it might be expired now, what should i do",
+            "reply": "I don't have that information.",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          }
+        ],
+        "resolve_status_code": null,
+        "error": null,
+        "technically_ok": true
+      },
+      {
+        "category_name": "Renew passport",
+        "scenario_index": 7,
+        "turns": [
+          {
+            "message": "so basically i moved back to sri lanka last year after living abroad for a while and i just realized my passport expires in like 2 months and i havent thought about this at all, my job needs me to travel again soon and im panicking a bit, what do i need to do to renew it in time",
+            "reply": "I don't have that information.",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          }
+        ],
+        "resolve_status_code": null,
+        "error": null,
+        "technically_ok": true
+      },
+      {
+        "category_name": "Renew passport",
+        "scenario_index": 8,
+        "turns": [
+          {
+            "message": "renwal of passport wats needed",
+            "reply": "I don't have that information.",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          }
+        ],
+        "resolve_status_code": null,
+        "error": null,
+        "technically_ok": true
+      },
+      {
+        "category_name": "Renew passport",
+        "scenario_index": 9,
+        "turns": [
+          {
+            "message": "im 68 can i still apply for renewal, do i need to give fingerprints at my age",
+            "reply": "I don't have that information.",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          }
+        ],
+        "resolve_status_code": null,
+        "error": null,
+        "technically_ok": true
+      },
+      {
+        "category_name": "Renew passport",
+        "scenario_index": 10,
+        "turns": [
+          {
+            "message": "my father is 68 years old, does he need to give fingerprints?",
+            "reply": "I don't have that information.",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          }
+        ],
+        "resolve_status_code": null,
+        "error": null,
+        "technically_ok": true
+      },
+      {
+        "category_name": "Renew passport",
+        "scenario_index": 11,
+        "turns": [
+          {
+            "message": "i need to renew my passport, then partway through",
+            "reply": "I don't have that information.",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          },
+          {
+            "message": "what is the difference between normal and urgent",
+            "reply": "I don't have that information.",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          },
+          {
+            "message": "where do i get the application form for this",
+            "reply": "I don't have that information.",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          }
+        ],
+        "resolve_status_code": null,
+        "error": null,
+        "technically_ok": true
+      },
+      {
+        "category_name": "Renew passport",
+        "scenario_index": 12,
+        "turns": [
+          {
+            "message": "i need to renew my passport",
+            "reply": "I don't have that information.",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          },
+          {
+            "message": "actually wait how much does this cost before i answer more questions",
+            "reply": "I don't have that information.",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          }
+        ],
+        "resolve_status_code": null,
+        "error": null,
+        "technically_ok": true
+      }
+    ],
+    "B": [
+      {
+        "category_name": "New passport (first-time applicant)",
+        "scenario_index": 1,
+        "turns": [
+          {
+            "message": "i've never had a passport before, how do i get one",
+            "reply": "I don't have that information.",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          }
+        ],
+        "resolve_status_code": null,
+        "error": null,
+        "technically_ok": true
+      },
+      {
+        "category_name": "New passport (first-time applicant)",
+        "scenario_index": 2,
+        "turns": [
+          {
+            "message": "applying for my first ever passport, where do i start",
+            "reply": "I don't have that information.",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          }
+        ],
+        "resolve_status_code": null,
+        "error": null,
+        "technically_ok": true
+      },
+      {
+        "category_name": "New passport (first-time applicant)",
+        "scenario_index": 3,
+        "turns": [
+          {
+            "message": "my daughter just turned 18 and needs a passport for the first time, never had one",
+            "reply": "I don't have that information.",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          }
+        ],
+        "resolve_status_code": null,
+        "error": null,
+        "technically_ok": true
+      },
+      {
+        "category_name": "New passport (first-time applicant)",
+        "scenario_index": 4,
+        "turns": [
+          {
+            "message": "first time passport wat do i need",
+            "reply": "I don't have that information.",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          }
+        ],
+        "resolve_status_code": null,
+        "error": null,
+        "technically_ok": true
+      },
+      {
+        "category_name": "New passport (first-time applicant)",
+        "scenario_index": 5,
+        "turns": [
+          {
+            "message": "i need help getting a passport, ive never traveled outside sri lanka before so i dont even know where to begin, what documents do i need to bring and how much will it cost me",
+            "reply": "I don't have that information.",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          }
+        ],
+        "resolve_status_code": null,
+        "error": null,
+        "technically_ok": true
+      },
+      {
+        "category_name": "New passport (first-time applicant)",
+        "scenario_index": 6,
+        "turns": [
+          {
+            "message": "my son is starting university abroad next year and he's never had a passport in his life, we need to get this sorted but we don't really know the process since we've never done it, can you walk us through it",
+            "reply": "I don't have that information.",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          }
+        ],
+        "resolve_status_code": null,
+        "error": null,
+        "technically_ok": true
+      },
+      {
+        "category_name": "New passport (first-time applicant)",
+        "scenario_index": 7,
+        "turns": [
+          {
+            "message": "need passport never had one b4",
+            "reply": "I don't have that information.",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          }
+        ],
+        "resolve_status_code": null,
+        "error": null,
+        "technically_ok": true
+      },
+      {
+        "category_name": "New passport (first-time applicant)",
+        "scenario_index": 8,
+        "turns": [
+          {
+            "message": "i am 17 and never had a passport, can i still apply myself or does my parent need to come",
+            "reply": "I don't have that information.",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          }
+        ],
+        "resolve_status_code": null,
+        "error": null,
+        "technically_ok": true
+      },
+      {
+        "category_name": "New passport (first-time applicant)",
+        "scenario_index": 9,
+        "turns": [
+          {
+            "message": "i've never had a passport",
+            "reply": "I don't have that information.",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          },
+          {
+            "message": "so wait is this the same process as renewing one",
+            "reply": "I don't have that information.",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          }
+        ],
+        "resolve_status_code": null,
+        "error": null,
+        "technically_ok": true
+      },
+      {
+        "category_name": "New passport (first-time applicant)",
+        "scenario_index": 10,
+        "turns": [
+          {
+            "message": "first time applying for a passport",
+            "reply": "I don't have that information.",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          },
+          {
+            "message": "can i come back to this later and finish it another day",
+            "reply": "I don't have that information.",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          }
+        ],
+        "resolve_status_code": null,
+        "error": null,
+        "technically_ok": true
+      }
+    ],
+    "C": [
+      {
+        "category_name": "Lost or stolen passport",
+        "scenario_index": 1,
+        "turns": [
+          {
+            "message": "i lost my passport what do i do now",
+            "reply": "I don't have that information.",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          }
+        ],
+        "resolve_status_code": null,
+        "error": null,
+        "technically_ok": true
+      },
+      {
+        "category_name": "Lost or stolen passport",
+        "scenario_index": 2,
+        "turns": [
+          {
+            "message": "my passport was stolen, help",
+            "reply": "I don't have that information.",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          }
+        ],
+        "resolve_status_code": null,
+        "error": null,
+        "technically_ok": true
+      },
+      {
+        "category_name": "Lost or stolen passport",
+        "scenario_index": 3,
+        "turns": [
+          {
+            "message": "someone stole my bag with my passport inside it",
+            "reply": "I don't have that information.",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          }
+        ],
+        "resolve_status_code": null,
+        "error": null,
+        "technically_ok": true
+      },
+      {
+        "category_name": "Lost or stolen passport",
+        "scenario_index": 4,
+        "turns": [
+          {
+            "message": "i cant find my passport anywhere, what do i do",
+            "reply": "I don't have that information.",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          }
+        ],
+        "resolve_status_code": null,
+        "error": null,
+        "technically_ok": true
+      },
+      {
+        "category_name": "Lost or stolen passport",
+        "scenario_index": 5,
+        "turns": [
+          {
+            "message": "lost passprot need new one urgent",
+            "reply": "I don't have that information.",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          }
+        ],
+        "resolve_status_code": null,
+        "error": null,
+        "technically_ok": true
+      },
+      {
+        "category_name": "Lost or stolen passport",
+        "scenario_index": 6,
+        "turns": [
+          {
+            "message": "so this is really stressful, i was traveling and someone went through my bag while i was asleep on the bus and took my wallet and my passport was in there too, i dont even know what to do first, do i call the police or the immigration department",
+            "reply": "I don't have that information.",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          }
+        ],
+        "resolve_status_code": null,
+        "error": null,
+        "technically_ok": true
+      },
+      {
+        "category_name": "Lost or stolen passport",
+        "scenario_index": 7,
+        "turns": [
+          {
+            "message": "im currently abroad and my passport got stolen out of my hotel room, i have a flight back home in 4 days and i have no idea what im supposed to do to get back into sri lanka without a passport",
+            "reply": "I don't have that information.",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          }
+        ],
+        "resolve_status_code": null,
+        "error": null,
+        "technically_ok": true
+      },
+      {
+        "category_name": "Lost or stolen passport",
+        "scenario_index": 8,
+        "turns": [
+          {
+            "message": "stolen passprot abroad wat do i do",
+            "reply": "I don't have that information.",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          }
+        ],
+        "resolve_status_code": null,
+        "error": null,
+        "technically_ok": true
+      },
+      {
+        "category_name": "Lost or stolen passport",
+        "scenario_index": 9,
+        "turns": [
+          {
+            "message": "i lost my passport, then partway through",
+            "reply": "I don't have that information.",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          },
+          {
+            "message": "wait do i need to pay a fine for losing it",
+            "reply": "I don't have that information.",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          }
+        ],
+        "resolve_status_code": null,
+        "error": null,
+        "technically_ok": true
+      },
+      {
+        "category_name": "Lost or stolen passport",
+        "scenario_index": 10,
+        "turns": [
+          {
+            "message": "my passport was stolen while abroad",
+            "reply": "I don't have that information.",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          },
+          {
+            "message": "can i change my answer, it was actually lost not stolen",
+            "reply": "I don't have that information.",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          }
+        ],
+        "resolve_status_code": null,
+        "error": null,
+        "technically_ok": true
+      }
+    ],
+    "D": [
+      {
+        "category_name": "Amend an existing passport",
+        "scenario_index": 1,
+        "turns": [
+          {
+            "message": "should i amend or get a new one",
+            "reply": "I don't have that information.",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          }
+        ],
+        "resolve_status_code": null,
+        "error": null,
+        "technically_ok": true
+      },
+      {
+        "category_name": "Amend an existing passport",
+        "scenario_index": 2,
+        "turns": [
+          {
+            "message": "is it cheaper to just change the name",
+            "reply": "I don't have that information.",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          }
+        ],
+        "resolve_status_code": null,
+        "error": null,
+        "technically_ok": true
+      },
+      {
+        "category_name": "Amend an existing passport",
+        "scenario_index": 3,
+        "turns": [
+          {
+            "message": "what is the difference between amendment and renewal",
+            "reply": "I don't have that information.",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          }
+        ],
+        "resolve_status_code": null,
+        "error": null,
+        "technically_ok": true
+      },
+      {
+        "category_name": "Amend an existing passport",
+        "scenario_index": 4,
+        "turns": [
+          {
+            "message": "can i just update my name instead",
+            "reply": "I don't have that information.",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          }
+        ],
+        "resolve_status_code": null,
+        "error": null,
+        "technically_ok": true
+      },
+      {
+        "category_name": "Amend an existing passport",
+        "scenario_index": 5,
+        "turns": [
+          {
+            "message": "i got married and my surname changed, do i need a whole new passport or can i just update it",
+            "reply": "I don't have that information.",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          }
+        ],
+        "resolve_status_code": null,
+        "error": null,
+        "technically_ok": true
+      },
+      {
+        "category_name": "Amend an existing passport",
+        "scenario_index": 6,
+        "turns": [
+          {
+            "message": "i want to add my job to my passport, is that possible",
+            "reply": "I don't have that information.",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          }
+        ],
+        "resolve_status_code": null,
+        "error": null,
+        "technically_ok": true
+      },
+      {
+        "category_name": "Amend an existing passport",
+        "scenario_index": 7,
+        "turns": [
+          {
+            "message": "need to put my nic number on my passport how",
+            "reply": "I don't have that information.",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          }
+        ],
+        "resolve_status_code": null,
+        "error": null,
+        "technically_ok": true
+      },
+      {
+        "category_name": "Amend an existing passport",
+        "scenario_index": 8,
+        "turns": [
+          {
+            "message": "i changed careers recently and now i'm a doctor, can i get my profession updated on my passport, and separately my old passport still shows my maiden name from before i got married, can both of these be fixed at the same time or do i need to do them separately",
+            "reply": "I don't have that information.",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          }
+        ],
+        "resolve_status_code": null,
+        "error": null,
+        "technically_ok": true
+      },
+      {
+        "category_name": "Amend an existing passport",
+        "scenario_index": 9,
+        "turns": [
+          {
+            "message": "amendmnet how much n how long does it take",
+            "reply": "I don't have that information.",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          }
+        ],
+        "resolve_status_code": null,
+        "error": null,
+        "technically_ok": true
+      },
+      {
+        "category_name": "Amend an existing passport",
+        "scenario_index": 10,
+        "turns": [
+          {
+            "message": "can i cancel the india nepal restriction on my passport",
+            "reply": "I don't have that information.",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          }
+        ],
+        "resolve_status_code": null,
+        "error": null,
+        "technically_ok": true
+      },
+      {
+        "category_name": "Amend an existing passport",
+        "scenario_index": 11,
+        "turns": [
+          {
+            "message": "i want to amend my passport",
+            "reply": "I don't have that information.",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          },
+          {
+            "message": "how long does an amendment actually take compared to a new passport",
+            "reply": "I don't have that information.",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          }
+        ],
+        "resolve_status_code": null,
+        "error": null,
+        "technically_ok": true
+      },
+      {
+        "category_name": "Amend an existing passport",
+        "scenario_index": 12,
+        "turns": [
+          {
+            "message": "i need to change my name on my passport",
+            "reply": "I don't have that information.",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          },
+          {
+            "message": "actually i want to change my profession too not just my name",
+            "reply": "I don't have that information.",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          }
+        ],
+        "resolve_status_code": null,
+        "error": null,
+        "technically_ok": true
+      }
+    ],
+    "E": [
+      {
+        "category_name": "Passport for a child under 16",
+        "scenario_index": 1,
+        "turns": [
+          {
+            "message": "how do i get a passport for my daughter, she's 8",
+            "reply": "I don't have that information.",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          }
+        ],
+        "resolve_status_code": null,
+        "error": null,
+        "technically_ok": true
+      },
+      {
+        "category_name": "Passport for a child under 16",
+        "scenario_index": 2,
+        "turns": [
+          {
+            "message": "my son is 14, does he need his own passport",
+            "reply": "I don't have that information.",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          }
+        ],
+        "resolve_status_code": null,
+        "error": null,
+        "technically_ok": true
+      },
+      {
+        "category_name": "Passport for a child under 16",
+        "scenario_index": 3,
+        "turns": [
+          {
+            "message": "applying for a passport for my child, what's needed",
+            "reply": "I don't have that information.",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          }
+        ],
+        "resolve_status_code": null,
+        "error": null,
+        "technically_ok": true
+      },
+      {
+        "category_name": "Passport for a child under 16",
+        "scenario_index": 4,
+        "turns": [
+          {
+            "message": "passport for my 8 year old",
+            "reply": "I don't have that information.",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          }
+        ],
+        "resolve_status_code": null,
+        "error": null,
+        "technically_ok": true
+      },
+      {
+        "category_name": "Passport for a child under 16",
+        "scenario_index": 5,
+        "turns": [
+          {
+            "message": "my baby was born 3 months ago and we're planning to travel as a family next year, when can we apply for her passport and what do we need",
+            "reply": "I don't have that information.",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          }
+        ],
+        "resolve_status_code": null,
+        "error": null,
+        "technically_ok": true
+      },
+      {
+        "category_name": "Passport for a child under 16",
+        "scenario_index": 6,
+        "turns": [
+          {
+            "message": "my wife and i are divorced and i have custody of our son, i need to apply for his passport but i'm not sure what extra paperwork i need because of the divorce situation, can you help",
+            "reply": "I don't have that information.",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          }
+        ],
+        "resolve_status_code": null,
+        "error": null,
+        "technically_ok": true
+      },
+      {
+        "category_name": "Passport for a child under 16",
+        "scenario_index": 7,
+        "turns": [
+          {
+            "message": "kid passport wat papers needed",
+            "reply": "I don't have that information.",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          }
+        ],
+        "resolve_status_code": null,
+        "error": null,
+        "technically_ok": true
+      },
+      {
+        "category_name": "Passport for a child under 16",
+        "scenario_index": 8,
+        "turns": [
+          {
+            "message": "can just one parent bring the child to apply or do both of us have to go",
+            "reply": "I don't have that information.",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          }
+        ],
+        "resolve_status_code": null,
+        "error": null,
+        "technically_ok": true
+      },
+      {
+        "category_name": "Passport for a child under 16",
+        "scenario_index": 9,
+        "turns": [
+          {
+            "message": "my daughter was born while we were living in dubai, does that change anything for her passport application",
+            "reply": "I don't have that information.",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          }
+        ],
+        "resolve_status_code": null,
+        "error": null,
+        "technically_ok": true
+      },
+      {
+        "category_name": "Passport for a child under 16",
+        "scenario_index": 10,
+        "turns": [
+          {
+            "message": "applying for my child's passport",
+            "reply": "I don't have that information.",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          },
+          {
+            "message": "does she need a 10 year passport or is there a shorter option",
+            "reply": "I don't have that information.",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          }
+        ],
+        "resolve_status_code": null,
+        "error": null,
+        "technically_ok": true
+      },
+      {
+        "category_name": "Passport for a child under 16",
+        "scenario_index": 11,
+        "turns": [
+          {
+            "message": "my son needs a passport, i have full custody",
+            "reply": "I don't have that information.",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          },
+          {
+            "message": "wait actually his father passed away, does that change what documents i need",
+            "reply": "I don't have that information.",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          }
+        ],
+        "resolve_status_code": null,
+        "error": null,
+        "technically_ok": true
+      }
+    ],
+    "F": [
+      {
+        "category_name": "Delete a child's name from a parent's passport",
+        "scenario_index": 1,
+        "turns": [
+          {
+            "message": "my old passport has my daughter's name on it, how do i remove her",
+            "reply": "I don't have that information.",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          }
+        ],
+        "resolve_status_code": null,
+        "error": null,
+        "technically_ok": true
+      },
+      {
+        "category_name": "Delete a child's name from a parent's passport",
+        "scenario_index": 2,
+        "turns": [
+          {
+            "message": "need to take my son off my passport so he can get his own",
+            "reply": "I don't have that information.",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          }
+        ],
+        "resolve_status_code": null,
+        "error": null,
+        "technically_ok": true
+      },
+      {
+        "category_name": "Delete a child's name from a parent's passport",
+        "scenario_index": 3,
+        "turns": [
+          {
+            "message": "my child is listed on my passport from years ago, can that be removed",
+            "reply": "I don't have that information.",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          }
+        ],
+        "resolve_status_code": null,
+        "error": null,
+        "technically_ok": true
+      },
+      {
+        "category_name": "Delete a child's name from a parent's passport",
+        "scenario_index": 4,
+        "turns": [
+          {
+            "message": "remove kid frm my passport",
+            "reply": "I don't have that information.",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          }
+        ],
+        "resolve_status_code": null,
+        "error": null,
+        "technically_ok": true
+      },
+      {
+        "category_name": "Delete a child's name from a parent's passport",
+        "scenario_index": 5,
+        "turns": [
+          {
+            "message": "so my passport is really old, like from when my kids were babies, and back then you could add your children to your own passport, well now my daughter is 17 and needs her own passport but i think she's still listed on mine, how do i get her taken off",
+            "reply": "I don't have that information.",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          }
+        ],
+        "resolve_status_code": null,
+        "error": null,
+        "technically_ok": true
+      },
+      {
+        "category_name": "Delete a child's name from a parent's passport",
+        "scenario_index": 6,
+        "turns": [
+          {
+            "message": "delete child name passport how much",
+            "reply": "I don't have that information.",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          }
+        ],
+        "resolve_status_code": null,
+        "error": null,
+        "technically_ok": true
+      },
+      {
+        "category_name": "Delete a child's name from a parent's passport",
+        "scenario_index": 7,
+        "turns": [
+          {
+            "message": "is this the same as an amendment or is it different",
+            "reply": "I don't have that information.",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          }
+        ],
+        "resolve_status_code": null,
+        "error": null,
+        "technically_ok": true
+      },
+      {
+        "category_name": "Delete a child's name from a parent's passport",
+        "scenario_index": 8,
+        "turns": [
+          {
+            "message": "my child's name is on my old passport",
+            "reply": "I don't have that information.",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          },
+          {
+            "message": "what form do i actually need to fill for this",
+            "reply": "I don't have that information.",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          }
+        ],
+        "resolve_status_code": null,
+        "error": null,
+        "technically_ok": true
+      },
+      {
+        "category_name": "Delete a child's name from a parent's passport",
+        "scenario_index": 9,
+        "turns": [
+          {
+            "message": "i need to remove my son from my passport",
+            "reply": "I don't have that information.",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          },
+          {
+            "message": "oh wait i think it might already be removed, let me check first, can i come back to this",
+            "reply": "I don't have that information.",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          }
+        ],
+        "resolve_status_code": null,
+        "error": null,
+        "technically_ok": true
+      }
+    ],
+    "G": [
+      {
+        "category_name": "Emergency Certificate (India and Nepal)",
+        "scenario_index": 1,
+        "turns": [
+          {
+            "message": "i'm going on a buddhist pilgrimage to india, what travel document do i need",
+            "reply": "I don't have that information.",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          }
+        ],
+        "resolve_status_code": null,
+        "error": null,
+        "technically_ok": true
+      },
+      {
+        "category_name": "Emergency Certificate (India and Nepal)",
+        "scenario_index": 2,
+        "turns": [
+          {
+            "message": "need something to travel to nepal for a pilgrimage trip",
+            "reply": "I don't have that information.",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          }
+        ],
+        "resolve_status_code": null,
+        "error": null,
+        "technically_ok": true
+      },
+      {
+        "category_name": "Emergency Certificate (India and Nepal)",
+        "scenario_index": 3,
+        "turns": [
+          {
+            "message": "whats an emergency certificate",
+            "reply": "I don't have that information.",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          }
+        ],
+        "resolve_status_code": null,
+        "error": null,
+        "technically_ok": true
+      },
+      {
+        "category_name": "Emergency Certificate (India and Nepal)",
+        "scenario_index": 4,
+        "turns": [
+          {
+            "message": "emergancy certificate india nepal cost",
+            "reply": "I don't have that information.",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          }
+        ],
+        "resolve_status_code": null,
+        "error": null,
+        "technically_ok": true
+      },
+      {
+        "category_name": "Emergency Certificate (India and Nepal)",
+        "scenario_index": 5,
+        "turns": [
+          {
+            "message": "our temple is organizing a pilgrimage group to india next month and several of us don't have passports, someone mentioned there's a cheaper document just for this kind of trip, what is that and how do we apply",
+            "reply": "I don't have that information.",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          }
+        ],
+        "resolve_status_code": null,
+        "error": null,
+        "technically_ok": true
+      },
+      {
+        "category_name": "Emergency Certificate (India and Nepal)",
+        "scenario_index": 6,
+        "turns": [
+          {
+            "message": "can i use an emergency certificate to visit any country or just india and nepal",
+            "reply": "I don't have that information.",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          }
+        ],
+        "resolve_status_code": null,
+        "error": null,
+        "technically_ok": true
+      },
+      {
+        "category_name": "Emergency Certificate (India and Nepal)",
+        "scenario_index": 7,
+        "turns": [
+          {
+            "message": "emergency certificate",
+            "reply": "I don't have that information.",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          },
+          {
+            "message": "does this work for a regular passport too or only these two countries",
+            "reply": "I don't have that information.",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          }
+        ],
+        "resolve_status_code": null,
+        "error": null,
+        "technically_ok": true
+      }
+    ],
+    "H": [
+      {
+        "category_name": "General information (not tied to one service)",
+        "scenario_index": 1,
+        "turns": [
+          {
+            "message": "where is the head office located",
+            "reply": "I don't have that information.",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          }
+        ],
+        "resolve_status_code": null,
+        "error": null,
+        "technically_ok": true
+      },
+      {
+        "category_name": "General information (not tied to one service)",
+        "scenario_index": 2,
+        "turns": [
+          {
+            "message": "what are the working hours",
+            "reply": "I don't have that information.",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          }
+        ],
+        "resolve_status_code": null,
+        "error": null,
+        "technically_ok": true
+      },
+      {
+        "category_name": "General information (not tied to one service)",
+        "scenario_index": 3,
+        "turns": [
+          {
+            "message": "do i need to book an appointment",
+            "reply": "I don't have that information.",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          }
+        ],
+        "resolve_status_code": null,
+        "error": null,
+        "technically_ok": true
+      },
+      {
+        "category_name": "General information (not tied to one service)",
+        "scenario_index": 4,
+        "turns": [
+          {
+            "message": "which office should i go to, i live in matara",
+            "reply": "I don't have that information.",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          }
+        ],
+        "resolve_status_code": null,
+        "error": null,
+        "technically_ok": true
+      },
+      {
+        "category_name": "General information (not tied to one service)",
+        "scenario_index": 5,
+        "turns": [
+          {
+            "message": "what is an authorised photo studio",
+            "reply": "I don't have that information.",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          }
+        ],
+        "resolve_status_code": null,
+        "error": null,
+        "technically_ok": true
+      },
+      {
+        "category_name": "General information (not tied to one service)",
+        "scenario_index": 6,
+        "turns": [
+          {
+            "message": "do i need a printed photo or can i just go to any studio",
+            "reply": "I don't have that information.",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          }
+        ],
+        "resolve_status_code": null,
+        "error": null,
+        "technically_ok": true
+      },
+      {
+        "category_name": "General information (not tied to one service)",
+        "scenario_index": 7,
+        "turns": [
+          {
+            "message": "what makes a photo valid for a passport",
+            "reply": "I don't have that information.",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          }
+        ],
+        "resolve_status_code": null,
+        "error": null,
+        "technically_ok": true
+      },
+      {
+        "category_name": "General information (not tied to one service)",
+        "scenario_index": 8,
+        "turns": [
+          {
+            "message": "where can i find authorised photo studios near me in kandy",
+            "reply": "I don't have that information.",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          }
+        ],
+        "resolve_status_code": null,
+        "error": null,
+        "technically_ok": true
+      },
+      {
+        "category_name": "General information (not tied to one service)",
+        "scenario_index": 9,
+        "turns": [
+          {
+            "message": "do i need my birth certificate for this",
+            "reply": "I don't have that information.",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          }
+        ],
+        "resolve_status_code": null,
+        "error": null,
+        "technically_ok": true
+      },
+      {
+        "category_name": "General information (not tied to one service)",
+        "scenario_index": 10,
+        "turns": [
+          {
+            "message": "what is form k 35a",
+            "reply": "I don't have that information.",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          }
+        ],
+        "resolve_status_code": null,
+        "error": null,
+        "technically_ok": true
+      },
+      {
+        "category_name": "General information (not tied to one service)",
+        "scenario_index": 11,
+        "turns": [
+          {
+            "message": "do i need to give fingerprints, im 45",
+            "reply": "I don't have that information.",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          }
+        ],
+        "resolve_status_code": null,
+        "error": null,
+        "technically_ok": true
+      },
+      {
+        "category_name": "General information (not tied to one service)",
+        "scenario_index": 12,
+        "turns": [
+          {
+            "message": "do children need to give fingerprints too",
+            "reply": "I don't have that information.",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          }
+        ],
+        "resolve_status_code": null,
+        "error": null,
+        "technically_ok": true
+      },
+      {
+        "category_name": "General information (not tied to one service)",
+        "scenario_index": 13,
+        "turns": [
+          {
+            "message": "can i apply online",
+            "reply": "I don't have that information.",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          }
+        ],
+        "resolve_status_code": null,
+        "error": null,
+        "technically_ok": true
+      },
+      {
+        "category_name": "General information (not tied to one service)",
+        "scenario_index": 14,
+        "turns": [
+          {
+            "message": "wheres do i get the application form",
+            "reply": "I don't have that information.",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          }
+        ],
+        "resolve_status_code": null,
+        "error": null,
+        "technically_ok": true
+      },
+      {
+        "category_name": "General information (not tied to one service)",
+        "scenario_index": 15,
+        "turns": [
+          {
+            "message": "what if my birth certificate is in tamil, is that a problem",
+            "reply": "I don't have that information.",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          }
+        ],
+        "resolve_status_code": null,
+        "error": null,
+        "technically_ok": true
+      },
+      {
+        "category_name": "General information (not tied to one service)",
+        "scenario_index": 16,
+        "turns": [
+          {
+            "message": "do i need photocopies of everything or just originals",
+            "reply": "I don't have that information.",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          }
+        ],
+        "resolve_status_code": null,
+        "error": null,
+        "technically_ok": true
+      },
+      {
+        "category_name": "General information (not tied to one service)",
+        "scenario_index": 17,
+        "turns": [
+          {
+            "message": "how do i pay the fee, cash or card",
+            "reply": "I don't have that information.",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          }
+        ],
+        "resolve_status_code": null,
+        "error": null,
+        "technically_ok": true
+      },
+      {
+        "category_name": "General information (not tied to one service)",
+        "scenario_index": 18,
+        "turns": [
+          {
+            "message": "is any part of the fee refundable if i change my mind",
+            "reply": "I don't have that information.",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          }
+        ],
+        "resolve_status_code": null,
+        "error": null,
+        "technically_ok": true
+      },
+      {
+        "category_name": "General information (not tied to one service)",
+        "scenario_index": 19,
+        "turns": [
+          {
+            "message": "how long does 30 working days actually mean, does that include weekends",
+            "reply": "I don't have that information.",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          }
+        ],
+        "resolve_status_code": null,
+        "error": null,
+        "technically_ok": true
+      },
+      {
+        "category_name": "General information (not tied to one service)",
+        "scenario_index": 20,
+        "turns": [
+          {
+            "message": "how do i collect my passport once its ready, do you sms me",
+            "reply": "I don't have that information.",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          }
+        ],
+        "resolve_status_code": null,
+        "error": null,
+        "technically_ok": true
+      },
+      {
+        "category_name": "General information (not tied to one service)",
+        "scenario_index": 21,
+        "turns": [
+          {
+            "message": "can my brother collect my passport for me if im not available",
+            "reply": "I don't have that information.",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          }
+        ],
+        "resolve_status_code": null,
+        "error": null,
+        "technically_ok": true
+      },
+      {
+        "category_name": "General information (not tied to one service)",
+        "scenario_index": 22,
+        "turns": [
+          {
+            "message": "how long is a passport valid for",
+            "reply": "I don't have that information.",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          }
+        ],
+        "resolve_status_code": null,
+        "error": null,
+        "technically_ok": true
+      },
+      {
+        "category_name": "General information (not tied to one service)",
+        "scenario_index": 23,
+        "turns": [
+          {
+            "message": "when should i start renewing before it expires",
+            "reply": "I don't have that information.",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          }
+        ],
+        "resolve_status_code": null,
+        "error": null,
+        "technically_ok": true
+      },
+      {
+        "category_name": "General information (not tied to one service)",
+        "scenario_index": 24,
+        "turns": [
+          {
+            "message": "im applying from dubai, how does that work",
+            "reply": "I don't have that information.",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          }
+        ],
+        "resolve_status_code": null,
+        "error": null,
+        "technically_ok": true
+      },
+      {
+        "category_name": "General information (not tied to one service)",
+        "scenario_index": 25,
+        "turns": [
+          {
+            "message": "which sri lankan mission handles applications in qatar",
+            "reply": "I don't have that information.",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          }
+        ],
+        "resolve_status_code": null,
+        "error": null,
+        "technically_ok": true
+      },
+      {
+        "category_name": "General information (not tied to one service)",
+        "scenario_index": 26,
+        "turns": [
+          {
+            "message": "does the application form need to be filled in english",
+            "reply": "I don't have that information.",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          }
+        ],
+        "resolve_status_code": null,
+        "error": null,
+        "technically_ok": true
+      }
+    ],
+    "I": [
+      {
+        "category_name": "Greetings and single words",
+        "scenario_index": 1,
+        "turns": [
+          {
+            "message": "hi",
+            "reply": "Hi! GovAssist helps you figure out exactly what you need for a Sri Lankan passport \u2014 renewal, amendment, and related questions.\n\nYou can:\n- Tell me your situation (e.g. \"my passport expired last year\") and I'll ask a few quick questions to build your document checklist.\n- Ask a specific question (e.g. \"how much does a passport cost?\").\n\nWhat would you like to do?",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          }
+        ],
+        "resolve_status_code": 409,
+        "error": null,
+        "technically_ok": true
+      },
+      {
+        "category_name": "Greetings and single words",
+        "scenario_index": 2,
+        "turns": [
+          {
+            "message": "hello",
+            "reply": "Hi! GovAssist helps you figure out exactly what you need for a Sri Lankan passport \u2014 renewal, amendment, and related questions.\n\nYou can:\n- Tell me your situation (e.g. \"my passport expired last year\") and I'll ask a few quick questions to build your document checklist.\n- Ask a specific question (e.g. \"how much does a passport cost?\").\n\nWhat would you like to do?",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          }
+        ],
+        "resolve_status_code": 409,
+        "error": null,
+        "technically_ok": true
+      },
+      {
+        "category_name": "Greetings and single words",
+        "scenario_index": 3,
+        "turns": [
+          {
+            "message": "help",
+            "reply": "Hi! GovAssist helps you figure out exactly what you need for a Sri Lankan passport \u2014 renewal, amendment, and related questions.\n\nYou can:\n- Tell me your situation (e.g. \"my passport expired last year\") and I'll ask a few quick questions to build your document checklist.\n- Ask a specific question (e.g. \"how much does a passport cost?\").\n\nWhat would you like to do?",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          }
+        ],
+        "resolve_status_code": 409,
+        "error": null,
+        "technically_ok": true
+      },
+      {
+        "category_name": "Greetings and single words",
+        "scenario_index": 4,
+        "turns": [
+          {
+            "message": "ayubowan",
+            "reply": "I don't have that information.",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          }
+        ],
+        "resolve_status_code": null,
+        "error": null,
+        "technically_ok": true
+      },
+      {
+        "category_name": "Greetings and single words",
+        "scenario_index": 5,
+        "turns": [
+          {
+            "message": "good morning",
+            "reply": "Hi! GovAssist helps you figure out exactly what you need for a Sri Lankan passport \u2014 renewal, amendment, and related questions.\n\nYou can:\n- Tell me your situation (e.g. \"my passport expired last year\") and I'll ask a few quick questions to build your document checklist.\n- Ask a specific question (e.g. \"how much does a passport cost?\").\n\nWhat would you like to do?",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          }
+        ],
+        "resolve_status_code": 409,
+        "error": null,
+        "technically_ok": true
+      },
+      {
+        "category_name": "Greetings and single words",
+        "scenario_index": 6,
+        "turns": [
+          {
+            "message": "passport",
+            "reply": "Hi! GovAssist helps you figure out exactly what you need for a Sri Lankan passport \u2014 renewal, amendment, and related questions.\n\nYou can:\n- Tell me your situation (e.g. \"my passport expired last year\") and I'll ask a few quick questions to build your document checklist.\n- Ask a specific question (e.g. \"how much does a passport cost?\").\n\nWhat would you like to do?",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          }
+        ],
+        "resolve_status_code": 409,
+        "error": null,
+        "technically_ok": true
+      },
+      {
+        "category_name": "Greetings and single words",
+        "scenario_index": 7,
+        "turns": [
+          {
+            "message": "\ud83d\ude0a",
+            "reply": "I don't have that information.",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          }
+        ],
+        "resolve_status_code": null,
+        "error": null,
+        "technically_ok": true
+      },
+      {
+        "category_name": "Greetings and single words",
+        "scenario_index": 8,
+        "turns": [
+          {
+            "message": "what can you do",
+            "reply": "Hi! GovAssist helps you figure out exactly what you need for a Sri Lankan passport \u2014 renewal, amendment, and related questions.\n\nYou can:\n- Tell me your situation (e.g. \"my passport expired last year\") and I'll ask a few quick questions to build your document checklist.\n- Ask a specific question (e.g. \"how much does a passport cost?\").\n\nWhat would you like to do?",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          }
+        ],
+        "resolve_status_code": 409,
+        "error": null,
+        "technically_ok": true
+      }
+    ],
+    "J": [
+      {
+        "category_name": "Out of scope, three different kinds",
+        "scenario_index": 1,
+        "turns": [
+          {
+            "message": "how do i renew my driving licence",
+            "reply": "I don't have that information.",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          }
+        ],
+        "resolve_status_code": null,
+        "error": null,
+        "technically_ok": true
+      },
+      {
+        "category_name": "Out of scope, three different kinds",
+        "scenario_index": 2,
+        "turns": [
+          {
+            "message": "i need a new birth certificate for my son",
+            "reply": "I don't have that information.",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          }
+        ],
+        "resolve_status_code": null,
+        "error": null,
+        "technically_ok": true
+      },
+      {
+        "category_name": "Out of scope, three different kinds",
+        "scenario_index": 3,
+        "turns": [
+          {
+            "message": "where do i apply for a nic",
+            "reply": "I don't have that information.",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          }
+        ],
+        "resolve_status_code": null,
+        "error": null,
+        "technically_ok": true
+      },
+      {
+        "category_name": "Out of scope, three different kinds",
+        "scenario_index": 4,
+        "turns": [
+          {
+            "message": "i need a copy of my marriage certificate",
+            "reply": "I don't have that information.",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          }
+        ],
+        "resolve_status_code": null,
+        "error": null,
+        "technically_ok": true
+      },
+      {
+        "category_name": "Out of scope, three different kinds",
+        "scenario_index": 5,
+        "turns": [
+          {
+            "message": "whats the weather like in colombo today",
+            "reply": "I don't have that information.",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          }
+        ],
+        "resolve_status_code": null,
+        "error": null,
+        "technically_ok": true
+      },
+      {
+        "category_name": "Out of scope, three different kinds",
+        "scenario_index": 6,
+        "turns": [
+          {
+            "message": "who won the cricket match last night",
+            "reply": "I don't have that information.",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          }
+        ],
+        "resolve_status_code": null,
+        "error": null,
+        "technically_ok": true
+      },
+      {
+        "category_name": "Out of scope, three different kinds",
+        "scenario_index": 7,
+        "turns": [
+          {
+            "message": "who is the president of sri lanka",
+            "reply": "I don't have that information.",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          }
+        ],
+        "resolve_status_code": null,
+        "error": null,
+        "technically_ok": true
+      },
+      {
+        "category_name": "Out of scope, three different kinds",
+        "scenario_index": 8,
+        "turns": [
+          {
+            "message": "write me a poem about the ocean",
+            "reply": "I don't have that information.",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          }
+        ],
+        "resolve_status_code": null,
+        "error": null,
+        "technically_ok": true
+      },
+      {
+        "category_name": "Out of scope, three different kinds",
+        "scenario_index": 9,
+        "turns": [
+          {
+            "message": "can i pay extra to get my passport delivered to my home",
+            "reply": "I don't have that information.",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          }
+        ],
+        "resolve_status_code": null,
+        "error": null,
+        "technically_ok": true
+      },
+      {
+        "category_name": "Out of scope, three different kinds",
+        "scenario_index": 10,
+        "turns": [
+          {
+            "message": "is there a passport office in jaffna that does saturday appointments",
+            "reply": "I don't have that information.",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          }
+        ],
+        "resolve_status_code": null,
+        "error": null,
+        "technically_ok": true
+      },
+      {
+        "category_name": "Out of scope, three different kinds",
+        "scenario_index": 11,
+        "turns": [
+          {
+            "message": "do you offer a whatsapp number i can message",
+            "reply": "I don't have that information.",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          }
+        ],
+        "resolve_status_code": null,
+        "error": null,
+        "technically_ok": true
+      },
+      {
+        "category_name": "Out of scope, three different kinds",
+        "scenario_index": 12,
+        "turns": [
+          {
+            "message": "can i track my application status online",
+            "reply": "I don't have that information.",
+            "status_code": 200,
+            "verdict": {
+              "understandable": true,
+              "answers_what_was_asked": true,
+              "has_jargon": false,
+              "too_long_for_phone": false,
+              "refusal_names_next_step": null,
+              "question_answerable_without_prior_knowledge": null,
+              "overall_ok": true,
+              "flag_reason": null
+            }
+          }
+        ],
+        "resolve_status_code": null,
+        "error": null,
+        "technically_ok": true
+      }
+    ]
+  }
+}

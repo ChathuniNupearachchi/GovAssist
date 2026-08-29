@@ -68,6 +68,19 @@ class RequirementOut(BaseModel):
 class FeeOut(BaseModel):
     basis: str
     base_amount: float
+    # Seven-corrections round, item 5 — "LKR" for every fee this app
+    # quoted before this fix; a genuinely different currency (USD, for
+    # an overseas applicant's fee, per the circular) from here on. Any
+    # client rendering a fee must read this field, not assume LKR.
+    currency: str
+    # Conversational-quality round, item 6's own demo-scenario finding
+    # — non-null only for a lost/stolen case with a penalty tier
+    # applied. `base_amount` is always the genuine base fee alone; a
+    # citizen-facing total is `base_amount + (penalty_amount or 0)`,
+    # computed by whoever renders it (never pre-summed server-side) so
+    # the breakdown itself is always visible, not folded into one
+    # unexplained number.
+    penalty_amount: float | None
     citation: CitationOut
 
     @classmethod
@@ -75,6 +88,8 @@ class FeeOut(BaseModel):
         return cls(
             basis=f.basis,
             base_amount=float(f.base_amount),
+            currency=f.currency,
+            penalty_amount=float(f.penalty_amount) if f.penalty_amount is not None else None,
             citation=CitationOut.from_citation(f.citation),
         )
 
@@ -110,6 +125,10 @@ class ConflictNoteOut(BaseModel):
 class OfficeResolutionOut(BaseModel):
     offices: list[OfficeOut]
     conflict_note: ConflictNoteOut | None
+    # Set whenever a district narrowed the regional office list — the
+    # Phase 2 district-to-office mapping is an unverified geographic
+    # placeholder (see app.engine.offices), never asserted as "nearest."
+    district_mapping_caveat: str | None = None
 
     @classmethod
     def from_resolved(cls, r: engine_types.OfficeResolution) -> "OfficeResolutionOut":
@@ -120,6 +139,7 @@ class OfficeResolutionOut(BaseModel):
                 if r.conflict_note is not None
                 else None
             ),
+            district_mapping_caveat=r.district_mapping_caveat,
         )
 
 
@@ -147,6 +167,19 @@ class CaseResolutionOut(BaseModel):
     offices: OfficeResolutionOut | None = None
     amendment_alternative: AmendmentAlternativeOut | None = None
     scope_gate: ScopeGateOut | None = None
+
+    @classmethod
+    def from_resolution_dict(cls, d: dict) -> "CaseResolutionOut":
+        """`app.graph.build.run_resolve_action`'s counterpart to
+        `from_resolution` — the graph's `resolve` node already
+        serializes `CaseResolution` to the same plain-dict shape these
+        fields expect (see `app.graph.nodes._resolution_dict`), so
+        Pydantic's own nested-dict validation (str -> UUID/datetime
+        coercion included) builds the response directly, no
+        `engine_types.CaseResolution` object needed."""
+        if d.get("scope_gate") is not None:
+            return cls(scope_gate=ScopeGateOut(reason=d["scope_gate"]))
+        return cls.model_validate(d)
 
     @classmethod
     def from_resolution(cls, r: engine_types.CaseResolution) -> "CaseResolutionOut":
@@ -231,3 +264,79 @@ class ChatMessageOut(BaseModel):
 class TranscriptOut(BaseModel):
     case_id: uuid.UUID | None
     messages: list[ChatMessageOut]
+
+
+class StudioOut(BaseModel):
+    """Phase 7 (mobile-app-integration): one authorized photo studio, as
+    returned by `GET /studios`. Mirrors `engine_types.ResolvedStudio`
+    field-for-field, same pattern every other `*Out` model in this file
+    uses."""
+
+    id: uuid.UUID
+    name: str
+    address: str
+    phone: str | None
+    citation: CitationOut
+
+    @classmethod
+    def from_resolved(cls, s: engine_types.ResolvedStudio) -> "StudioOut":
+        return cls(
+            id=s.id,
+            name=s.name,
+            address=s.address,
+            phone=s.phone,
+            citation=CitationOut.from_citation(s.citation),
+        )
+
+
+class StudioResolutionOut(BaseModel):
+    district: str
+    studios: list[StudioOut]
+    receipt_note: str
+
+    @classmethod
+    def from_resolved(cls, r: engine_types.StudioResolution) -> "StudioResolutionOut":
+        return cls(
+            district=r.district,
+            studios=[StudioOut.from_resolved(s) for s in r.studios],
+            receipt_note=r.receipt_note,
+        )
+
+
+# --- Item 7: user accounts and saved plans -----------------------------
+
+
+class SignupRequest(BaseModel):
+    email: str
+    password: str
+
+
+class SigninRequest(BaseModel):
+    email: str
+    password: str
+
+
+class TokenOut(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+
+
+class SavePlanRequest(BaseModel):
+    case_id: uuid.UUID
+    label: str
+
+
+class SavedPlanOut(BaseModel):
+    id: uuid.UUID
+    case_id: uuid.UUID
+    label: str
+    created_at: datetime
+
+    @classmethod
+    def from_model(cls, saved_plan) -> "SavedPlanOut":
+        return cls(
+            id=saved_plan.id,
+            case_id=saved_plan.case_id,
+            label=saved_plan.label,
+            created_at=saved_plan.created_at,
+        )

@@ -215,6 +215,7 @@ openspec/               Change proposals and specs
 ```bash
 cd govassist
 npm install
+cp .env.example .env    # then set EXPO_PUBLIC_API_BASE_URL — see "Running on a physical device" below
 npx expo start --clear
 ```
 
@@ -231,10 +232,37 @@ venv\Scripts\activate        # Windows
 source venv/bin/activate     # macOS / Linux
 pip install -r requirements.txt
 alembic upgrade head
-uvicorn main:app --reload
+uvicorn main:app --host 0.0.0.0 --reload
 ```
 
 API docs at `http://localhost:8000/docs`
+
+### Running on a physical device (LAN setup)
+
+The app has to reach the backend over your local network — `localhost`
+in the mobile app's `.env` resolves to the *phone*, not your laptop, so
+it will silently fail to connect. Two things have to line up:
+
+1. **The backend must bind to `0.0.0.0`, not just `127.0.0.1`.** The
+   `--host 0.0.0.0` flag above is required — without it, uvicorn only
+   accepts connections from the machine it's running on, and the phone
+   can't reach it at all, even on the same Wi-Fi.
+2. **The mobile app needs your laptop's LAN IP**, not `localhost`, in
+   `EXPO_PUBLIC_API_BASE_URL`.
+   - **Windows**: run `ipconfig`, find the active adapter (usually
+     "Wireless LAN adapter Wi-Fi"), and use its `IPv4 Address` (e.g.
+     `192.168.1.42`).
+   - **macOS**: System Settings → Wi-Fi → Details → look for the IP
+     address, or run `ipconfig getifaddr en0` in a terminal.
+   - **Linux**: `hostname -I` or `ip addr show`.
+
+   Set `EXPO_PUBLIC_API_BASE_URL=http://<that-ip>:8000` in the mobile
+   app's `.env`, then restart `expo start`. Your phone and laptop must
+   be on the same Wi-Fi network.
+
+If the app can't reach the backend at all — a wrong IP, the backend not
+running, or a firewall blocking the port — the app shows a distinct
+"can't reach the server" message with a retry button, not a silent hang.
 
 ---
 

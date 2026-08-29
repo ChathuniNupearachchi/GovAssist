@@ -6,6 +6,8 @@ import { LoginScreen } from "../screens/LoginScreen";
 import { DepartmentsScreen } from "../screens/DepartmentsScreen";
 import { ServicesScreen } from "../screens/ServicesScreen";
 import { PlanScreen } from "../screens/PlanScreen";
+import { UserMenuButton } from "../components/UserMenuButton";
+import { navigationRef } from "./navigationRef";
 
 export type RootStackParamList = {
   Splash: undefined;
@@ -19,7 +21,7 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export function AppNavigator() {
   return (
-    <NavigationContainer>
+    <NavigationContainer ref={navigationRef}>
       <Stack.Navigator
         initialRouteName="Splash"
         screenOptions={{
@@ -29,6 +31,10 @@ export function AppNavigator() {
           headerTitleStyle: { fontSize: fontSize.title, fontWeight: "700", color: colors.textPrimary },
           headerBackTitle: "Back",
           contentStyle: { backgroundColor: colors.background },
+          // Item 7 — a user icon on every main screen; Splash/Login have
+          // no header at all, so this only ever renders on the three
+          // screens below.
+          headerRight: () => <UserMenuButton />,
         }}
       >
         <Stack.Screen name="Splash" component={SplashScreen} options={{ headerShown: false }} />
